@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDEV Dashboard</title>
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--fg:#1c1f24;--muted:#6b7280;--line:#e3e5e9;--ok:#16a34a;--off:#9ca3af;--busy:#d97706;--err:#dc2626;--acc:#02a8e2;--acc2:#0284c7;--shade:rgba(15,18,24,.45)}
+@media (prefers-color-scheme:dark){:root{--bg:#111318;--card:#1a1d24;--fg:#e8eaee;--muted:#9097a3;--line:#2a2e37;--acc2:#38bdf8;--shade:rgba(0,0,0,.6)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,"Segoe UI",sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:22px 16px 60px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:10px;flex:1;min-width:200px}
+.brand img{height:34px;display:block}
+.brand span{font-size:21px;color:var(--muted)}.brand b{color:var(--fg)}
+.sum{color:var(--muted);font-size:14px}
+button,.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:6px 12px;border-radius:7px;cursor:pointer;text-decoration:none;display:inline-block}
+button:hover:not(:disabled),.btn:hover{border-color:var(--acc)}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.danger{color:var(--err)}
+button.danger.solid{background:var(--err);border-color:var(--err);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--off);flex:none}
+.dot.running{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.dot.busy{background:var(--busy);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.name{font-weight:600;font-size:16px}
+.badge{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:1px 8px}
+.grow{flex:1}
+.meta{color:var(--muted);font-size:13px;margin-top:6px;word-break:break-all}
+.links{margin-top:6px}
+.links a{color:var(--acc2);font-size:13px;margin-right:14px;text-decoration:none}
+.links a:hover{text-decoration:underline}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+details{margin-top:8px;font-size:13px}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:10px;max-height:300px;overflow:auto;margin:6px 0 0;font-size:12px}
+.fail summary{color:var(--err)}
+.error{color:var(--err)}
+.hint{color:var(--muted);font-size:13px}
+.shade{position:fixed;inset:0;background:var(--shade);display:none;z-index:10}
+.shade.open{display:block}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(620px,100%);background:var(--card);border-left:1px solid var(--line);z-index:11;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .2s}
+.drawer.open{transform:none}
+.dhead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.dhead h2{margin:0;font-size:18px;flex:1}
+.tabs{display:flex;gap:2px;padding:0 12px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:10px 12px;color:var(--muted);white-space:nowrap}
+.tabs button.on{color:var(--fg);border-bottom-color:var(--acc)}
+.dbody{padding:16px;overflow:auto;flex:1}
+.modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(580px,calc(100% - 32px));max-height:calc(100% - 40px);overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;z-index:11;padding:18px;display:none}
+.modal.open{display:block}
+.modal h2{margin:0 0 12px;font-size:18px}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+input,select{font:inherit;font-size:14px;width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+input[type=checkbox]{width:auto;margin-right:6px}
+.check{display:flex;align-items:center;color:var(--fg);font-size:14px;margin-top:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media (max-width:520px){.grid2{grid-template-columns:1fr}}
+h3{font-size:14px;margin:20px 0 6px}
+h3:first-child{margin-top:0}
+.list{border:1px solid var(--line);border-radius:7px}
+.li{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px;word-break:break-all}
+.li:last-child{border-bottom:0}
+.li .grow{min-width:0}
+.addrow{display:flex;gap:6px;margin-top:6px}
+.addrow input{flex:1}
+.suffix{display:flex;align-items:center;gap:4px;flex:1}
+.suffix span{color:var(--muted);font-size:13px;white-space:nowrap}
+.foot{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.jobbox{margin-bottom:14px}
+code{font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.copy{position:relative}
+.copy button{position:absolute;top:6px;right:6px;padding:2px 8px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><img src="/assets/icon.svg" alt=""><span><b>DDEV</b> Dashboard</span></div>
+    <span class="sum" id="sum"></span>
+    <button class="primary" id="newBtn" data-i18n="newProject"></button>
+    <button id="refresh" data-i18n="refresh"></button>
+    <button id="poweroff" class="danger"></button>
+    <button id="setBtn" data-i18n="settingsBtn"></button>
+  </header>
+  <div id="jobs"></div>
+  <div id="list"></div>
+</div>
+
+<div class="shade" id="shade"></div>
+
+<aside class="drawer" id="drawer">
+  <div class="dhead"><span class="dot" id="dDot"></span><h2 id="dTitle"></h2><button id="dClose">✕</button></div>
+  <div class="tabs" id="tabs">
+    <button data-t="settings" data-i18n="tabSettings"></button>
+    <button data-t="domains">Domains</button>
+    <button data-t="db" data-i18n="tabDb"></button>
+    <button data-t="logs">Logs</button>
+    <button data-t="delete" data-i18n="tabDelete"></button>
+  </div>
+  <div class="dbody"><div id="dJob" class="jobbox"></div><div id="dBody"></div></div>
+</aside>
+
+<div class="modal" id="newModal">
+  <h2 data-i18n="newProjectTitle"></h2>
+  <label data-i18n="nPath"></label>
+  <input id="nPath">
+  <div class="grid2">
+    <div><label data-i18n="nName"></label><input id="nName" placeholder="mysite"></div>
+    <div><label data-i18n="type"></label><select id="nType"></select></div>
+    <div><label data-i18n="nDocroot"></label><input id="nDocroot" data-i18n-ph="docrootPh"></div>
+    <div><label>PHP</label><select id="nPhp"></select></div>
+    <div><label>Web server</label><select id="nWeb"></select></div>
+    <div><label data-i18n="database"></label><select id="nDb"></select></div>
+  </div>
+  <label data-i18n="nHosts"></label>
+  <input id="nHosts" data-i18n-ph="nHostsPh">
+  <div class="check"><input type="checkbox" id="nPma" checked><span data-i18n="nPma"></span></div>
+  <div class="check"><input type="checkbox" id="nStart" checked><span data-i18n="nStart"></span></div>
+  <p class="hint" id="nUrl"></p>
+  <div class="foot"><button class="cancel" data-i18n="cancel"></button><button class="primary" id="nCreate" data-i18n="create"></button></div>
+</div>
+
+<div class="modal" id="setModal">
+  <h2 data-i18n="settings"></h2>
+  <div class="grid2">
+    <div><label data-i18n="language"></label><select id="sLang"><option value="el">Ελληνικά</option><option value="en">English</option></select></div>
+    <div><label data-i18n="environment"></label><select id="sEnv"></select></div>
+  </div>
+  <p class="hint" id="sEnvHint"></p>
+  <label data-i18n="projectsDir"></label>
+  <input id="sDir">
+  <p class="hint" data-i18n="projectsDirHint"></p>
+  <h3 data-i18n="autostart"></h3>
+  <p class="hint" id="sAutoHint"></p>
+  <div class="copy"><pre id="sAuto"></pre><button id="sCopy" data-i18n="copy"></button></div>
+  <p class="hint" id="sInfo"></p>
+  <div class="foot"><button class="cancel" data-i18n="cancel"></button><button class="primary" id="sSaveSet" data-i18n="save"></button></div>
+</div>
+
+<script>
+const I18N = {
+el: {
+  newProject:"+ Νέο project", refresh:"Ανανέωση", stopAll:"Stop όλα", settings:"Ρυθμίσεις", settingsBtn:"⚙ Ρυθμίσεις", running:"{a} από {b} τρέχουν",
+  manage:"Διαχείριση", noProjects:"Δεν υπάρχουν projects. Πάτα «+ Νέο project».", allProjects:"Όλα τα projects",
+  error:"Σφάλμα", loading:"Φόρτωση…", last:"Τελευταίο", failed:"✗ απέτυχε", confirmPoweroff:"Να σταματήσουν όλα τα projects (ddev poweroff);",
+  tabSettings:"Ρυθμίσεις", tabDb:"Βάση", tabDelete:"Διαγραφή", type:"Τύπος", database:"Βάση δεδομένων", folder:"Φάκελος",
+  docrootPh:"(ο φάκελος του project)", dbChangeHint:"Η αλλαγή τύπου βάσης δεν γίνεται από εδώ γιατί χρειάζεται μετάπτωση δεδομένων.",
+  save:"Αποθήκευση", saveRestart:"Αποθήκευση και restart", status:"Κατάσταση", enabled:"ενεργό", disabled:"ανενεργό",
+  enable:"Ενεργοποίηση", disable:"Απενεργοποίηση", xdebugHint:"Ισχύει μέχρι το επόμενο restart.", xdebugStart:"Ξεκίνα το project για να αλλάξεις το Xdebug.",
+  ddevDomains:"Domains .ddev.site", ddevDomainsHint:"Δουλεύουν αμέσως, χωρίς καμία ρύθμιση. Το βασικό είναι {h}.",
+  noneExtra:"Κανένα επιπλέον", none:"Κανένα", add:"Προσθήκη", hostPh:"π.χ. admin ή *.shop",
+  ownDomains:"Δικά σου domains", ownDomainsHint:"Π.χ. {a} ή {b}. Αν δεν ανοίγει, πρόσθεσε στο {f} (ως διαχειριστής) τη γραμμή {l}.",
+  hostsLines:"Γραμμές για το αρχείο hosts", opensAt:"Θα ανοίγει από",
+  dbInfo:"Βάση: {d} · όνομα {n}, χρήστης {u}, κωδικός {p}, host {h}", startForDb:"Ξεκίνα το project για εξαγωγή, εισαγωγή και snapshots.",
+  openPma:"Άνοιγμα phpMyAdmin ↗", pmaInstalled:"Εγκατεστημένο. Ανοίγει όταν τρέχει το project.", installPma:"Εγκατάσταση phpMyAdmin",
+  exportTitle:"Εξαγωγή (backup)", download:"Λήψη .sql.gz", importTitle:"Εισαγωγή", importHint:"Αντικαθιστά όλη την τρέχουσα βάση. Δεκτά: .sql, .sql.gz, .zip, .tar.gz.",
+  importBtn:"Εισαγωγή", uploading:"Ανέβασμα…", chooseFile:"Διάλεξε αρχείο.", confirmImport:"Εισαγωγή του «{f}» στο {n}; Η τρέχουσα βάση θα αντικατασταθεί.",
+  snapHint:"Γρήγορα αντίγραφα της βάσης, μένουν στο {d} του project.", snapNamePh:"Όνομα (προαιρετικό)", newSnap:"Νέο snapshot",
+  noSnaps:"Κανένα snapshot", restore:"Επαναφορά", confirmRestore:"Επαναφορά του «{s}»; Η τρέχουσα βάση θα αντικατασταθεί.", confirmSnapDel:"Διαγραφή του snapshot «{s}»;",
+  logsWeb:"web (PHP, web server)", logsDb:"db (βάση)", logsNotRunning:"Το project δεν τρέχει, μπορεί να μην υπάρχουν logs.", empty:"(κενό)",
+  deleteText:"Σβήνει τα containers και τη <b>βάση</b> του project από το DDEV. <b>Τα αρχεία στον φάκελο μένουν</b> ({p}), όπως και η ρύθμιση {c}, οπότε το ξαναξεκινάς με Start.",
+  keepSnap:"Κράτα snapshot της βάσης πριν τη διαγραφή", typeToConfirm:"Γράψε <b>{n}</b> για επιβεβαίωση", deleteProject:"Διαγραφή project",
+  newProjectTitle:"Νέο project", nPath:"Φάκελος (μπορεί να είναι και καινούριος)", nName:"Όνομα project", nDocroot:"Docroot (κενό = ο ίδιος ο φάκελος)",
+  nHosts:"Επιπλέον domains .ddev.site (χωρισμένα με κόμμα, προαιρετικό)", nHostsPh:"π.χ. admin, api", nPma:"Εγκατάσταση phpMyAdmin",
+  nStart:"Εκκίνηση μόλις δημιουργηθεί", opensOn:"Θα ανοίγει στο {u}", fillIn:"Συμπλήρωσε φάκελο και όνομα.", cancel:"Άκυρο", create:"Δημιουργία",
+  language:"Γλώσσα", environment:"Πού τρέχει το DDEV", envAuto:"Αυτόματα ({e})", detected:"Εντοπίστηκε: {e}.",
+  envHint_wsl:"Μπορείς να γράφεις διαδρομές Windows (D:\\...), μετατρέπονται αυτόματα σε /mnt/d/...",
+  envHint_linux:"Διαδρομές Linux, π.χ. /home/user/projects/site.", envHint_macos:"Διαδρομές macOS, π.χ. /Users/user/Sites/site.",
+  envHint_windows:"DDEV εγκατεστημένο απευθείας στα Windows (με Docker Desktop). Διαδρομές Windows, π.χ. D:\\Projects\\site.",
+  projectsDir:"Προεπιλεγμένος φάκελος για νέα projects", projectsDirHint:"Κενό = ο φάκελος όπου βρίσκονται τα περισσότερα projects σου.",
+  autostart:"Αυτόματη εκκίνηση του dashboard", copy:"Αντιγραφή", copied:"Αντιγράφηκε",
+  autoHint_systemd:"Τρέξε τα παρακάτω μία φορά στο τερματικό{w}. Μετά το dashboard ξεκινά μόνο του.", inWsl:" του Ubuntu (WSL)",
+  autoHint_macos:"Τρέξε τα παρακάτω μία φορά στο Terminal. Μετά το dashboard ξεκινά μόλις συνδεθείς.",
+  autoHint_windows:"Τρέξε την παρακάτω εντολή μία φορά στο PowerShell. Μετά το dashboard ξεκινά μόλις συνδεθείς στα Windows.",
+  panelInfo:"Dashboard: {d} · port {p}",
+  envNames:{wsl:"WSL (Ubuntu)", linux:"Linux", macos:"macOS", windows:"Windows"},
+  act:{start:"Start", stop:"Stop", restart:"Restart", poweroff:"Stop όλα", create:"Δημιουργία", settings:"Ρυθμίσεις", domains:"Domains", xdebug:"Xdebug",
+    phpmyadmin:"phpMyAdmin", snapshot:"Snapshot", "snapshot-restore":"Επαναφορά snapshot", "snapshot-delete":"Διαγραφή snapshot", "import-db":"Εισαγωγή βάσης", delete:"Διαγραφή"},
+  busy:{start:"Εκκίνηση…", stop:"Σταμάτημα…", restart:"Επανεκκίνηση…", poweroff:"Σταματούν όλα…", create:"Δημιουργία…", settings:"Αλλαγή ρυθμίσεων…",
+    domains:"Αλλαγή domains…", xdebug:"Xdebug…", phpmyadmin:"Εγκατάσταση phpMyAdmin…", snapshot:"Snapshot…", "snapshot-restore":"Επαναφορά snapshot…",
+    "snapshot-delete":"Διαγραφή snapshot…", "import-db":"Εισαγωγή βάσης…", delete:"Διαγραφή…"},
+  locale:"el-GR"
+},
+en: {
+  newProject:"+ New project", refresh:"Refresh", stopAll:"Stop all", settings:"Settings", settingsBtn:"⚙ Settings", running:"{a} of {b} running",
+  manage:"Manage", noProjects:"No projects yet. Click “+ New project”.", allProjects:"All projects",
+  error:"Error", loading:"Loading…", last:"Last", failed:"✗ failed", confirmPoweroff:"Stop all projects (ddev poweroff)?",
+  tabSettings:"Settings", tabDb:"Database", tabDelete:"Delete", type:"Type", database:"Database", folder:"Folder",
+  docrootPh:"(the project folder)", dbChangeHint:"Changing the database type isn't done here because it needs a data migration.",
+  save:"Save", saveRestart:"Save and restart", status:"Status", enabled:"on", disabled:"off",
+  enable:"Enable", disable:"Disable", xdebugHint:"Lasts until the next restart.", xdebugStart:"Start the project to change Xdebug.",
+  ddevDomains:".ddev.site domains", ddevDomainsHint:"Work right away, no setup needed. The main one is {h}.",
+  noneExtra:"No extra domains", none:"None", add:"Add", hostPh:"e.g. admin or *.shop",
+  ownDomains:"Your own domains", ownDomainsHint:"E.g. {a} or {b}. If it doesn't open, add the line {l} to {f} (as administrator).",
+  hostsLines:"Lines for the hosts file", opensAt:"Will open at",
+  dbInfo:"Database: {d} · name {n}, user {u}, password {p}, host {h}", startForDb:"Start the project to export, import and take snapshots.",
+  openPma:"Open phpMyAdmin ↗", pmaInstalled:"Installed. Opens when the project is running.", installPma:"Install phpMyAdmin",
+  exportTitle:"Export (backup)", download:"Download .sql.gz", importTitle:"Import", importHint:"Replaces the whole current database. Accepts .sql, .sql.gz, .zip, .tar.gz.",
+  importBtn:"Import", uploading:"Uploading…", chooseFile:"Choose a file.", confirmImport:"Import “{f}” into {n}? The current database will be replaced.",
+  snapHint:"Quick database copies, kept in the project's {d}.", snapNamePh:"Name (optional)", newSnap:"New snapshot",
+  noSnaps:"No snapshots", restore:"Restore", confirmRestore:"Restore “{s}”? The current database will be replaced.", confirmSnapDel:"Delete snapshot “{s}”?",
+  logsWeb:"web (PHP, web server)", logsDb:"db (database)", logsNotRunning:"The project isn't running, there may be no logs.", empty:"(empty)",
+  deleteText:"Removes the project's containers and <b>database</b> from DDEV. <b>The files in the folder stay</b> ({p}), as does the {c} config, so you can bring it back with Start.",
+  keepSnap:"Keep a database snapshot before deleting", typeToConfirm:"Type <b>{n}</b> to confirm", deleteProject:"Delete project",
+  newProjectTitle:"New project", nPath:"Folder (can be a new one)", nName:"Project name", nDocroot:"Docroot (empty = the folder itself)",
+  nHosts:"Extra .ddev.site domains (comma separated, optional)", nHostsPh:"e.g. admin, api", nPma:"Install phpMyAdmin",
+  nStart:"Start once created", opensOn:"Will open at {u}", fillIn:"Fill in the folder and the name.", cancel:"Cancel", create:"Create",
+  language:"Language", environment:"Where DDEV runs", envAuto:"Automatic ({e})", detected:"Detected: {e}.",
+  envHint_wsl:"You can type Windows paths (D:\\...), they're converted to /mnt/d/... automatically.",
+  envHint_linux:"Linux paths, e.g. /home/user/projects/site.", envHint_macos:"macOS paths, e.g. /Users/user/Sites/site.",
+  envHint_windows:"DDEV installed directly on Windows (with Docker Desktop). Windows paths, e.g. D:\\Projects\\site.",
+  projectsDir:"Default folder for new projects", projectsDirHint:"Empty = the folder that holds most of your projects.",
+  autostart:"Start the dashboard automatically", copy:"Copy", copied:"Copied",
+  autoHint_systemd:"Run this once in the terminal{w}. After that the dashboard starts by itself.", inWsl:" of Ubuntu (WSL)",
+  autoHint_macos:"Run this once in Terminal. After that the dashboard starts when you log in.",
+  autoHint_windows:"Run this once in PowerShell. After that the dashboard starts when you sign in to Windows.",
+  panelInfo:"Dashboard: {d} · port {p}",
+  envNames:{wsl:"WSL (Ubuntu)", linux:"Linux", macos:"macOS", windows:"Windows"},
+  act:{start:"Start", stop:"Stop", restart:"Restart", poweroff:"Stop all", create:"Create", settings:"Settings", domains:"Domains", xdebug:"Xdebug",
+    phpmyadmin:"phpMyAdmin", snapshot:"Snapshot", "snapshot-restore":"Restore snapshot", "snapshot-delete":"Delete snapshot", "import-db":"Import database", delete:"Delete"},
+  busy:{start:"Starting…", stop:"Stopping…", restart:"Restarting…", poweroff:"Stopping all…", create:"Creating…", settings:"Applying settings…",
+    domains:"Updating domains…", xdebug:"Xdebug…", phpmyadmin:"Installing phpMyAdmin…", snapshot:"Snapshot…", "snapshot-restore":"Restoring snapshot…",
+    "snapshot-delete":"Deleting snapshot…", "import-db":"Importing database…", delete:"Deleting…"},
+  locale:"en-GB"
+}};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let cfg = {lang:"el", effective_env:"wsl"};
+const L = () => I18N[cfg.lang] || I18N.el;
+const t = (k, vars = {}) => String(L()[k] ?? k).replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? "");
+const code = s => `<code>${esc(s)}</code>`;
+const isWin = () => ["wsl", "windows"].includes(cfg.effective_env);
+// Show paths the way the user knows them: D:\... for WSL mounts
+const showPath = p => { if (cfg.effective_env === "wsl") { const m = /^\/mnt\/([a-z])\/(.*)$/.exec(p || ""); if (m) return m[1].toUpperCase() + ":\\" + m[2].replace(/\//g, "\\"); } return p; };
+const sep = () => isWin() ? "\\" : "/";
+const hostsFile = () => isWin() ? "C:\\Windows\\System32\\drivers\\etc\\hosts" : "/etc/hosts";
+
+let state = {projects:[], busy:{}, logs:{}}, opts = null, loading = false;
+let cur = null, curTab = "settings", detail = null, wasBusy = false;
+
+function applyStatic() {
+  document.documentElement.lang = cfg.lang;
+  document.querySelectorAll("[data-i18n]").forEach(e => e.textContent = t(e.dataset.i18n));
+  document.querySelectorAll("[data-i18n-ph]").forEach(e => e.placeholder = t(e.dataset.i18nPh));
+  document.querySelectorAll("[data-i18n-title]").forEach(e => e.title = t(e.dataset.i18nTitle));
+}
+
+async function api(path, opt = {}) {
+  const r = await fetch(path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+const post = (path, body) => api(path, {method:"POST", headers:{"Content-Type":"application/json","X-DDEV-Dashboard":"1"}, body:JSON.stringify(body)});
+async function act(name, action, params = {}) {
+  try { await post("/api/action", {name, action, params}); }
+  catch (e) { alert(t("error") + ": " + e.message); }
+  load();
+}
+
+async function load() {
+  if (loading) return; loading = true;
+  try { state = await api("/api/projects"); render(); }
+  catch (e) { $("#list").innerHTML = `<div class="card error">${t("error")}: ${esc(e.message)}</div>`; $("#sum").textContent = ""; }
+  finally { loading = false; }
+}
+
+const fmtTime = s => new Date(s * 1000).toLocaleTimeString(L().locale);
+const logHtml = log => log ? `<details class="${log.ok ? "" : "fail"}"><summary>${t("last")}: ${esc(L().act[log.action] || log.action)} ${log.ok ? "✓" : t("failed")} · ${fmtTime(log.time)}</summary><pre>${esc(log.output)}</pre></details>` : "";
+const busyHtml = (b, open) => b ? `<details ${open ? "open" : ""}><summary>${esc(L().busy[b.action] || b.action)}</summary><pre>${esc(b.output || "…")}</pre></details>` : "";
+
+function render() {
+  const ps = state.projects, all = state.busy["*"], names = new Set(ps.map(p => p.name));
+  $("#sum").textContent = t("running", {a: ps.filter(p => p.status === "running").length, b: ps.length});
+  $("#poweroff").disabled = !!all;
+  $("#poweroff").textContent = all ? L().busy.poweroff : t("stopAll");
+
+  const keys = [...new Set([...Object.keys(state.busy), ...Object.keys(state.logs)])].filter(k => !names.has(k));
+  $("#jobs").innerHTML = keys.map(k => `<div class="card"><div class="row"><span class="dot ${state.busy[k] ? "busy" : ""}"></span><span class="name">${k === "*" ? t("allProjects") : esc(k)}</span></div>${busyHtml(state.busy[k], true)}${state.busy[k] ? "" : logHtml(state.logs[k])}</div>`).join("");
+
+  $("#list").innerHTML = ps.map(p => {
+    const b = state.busy[p.name] || all, on = p.status === "running";
+    const status = b ? (L().busy[b.action] || b.action) : (p.status_desc || p.status);
+    const links = on ? `<div class="links"><a href="${esc(p.primary_url)}" target="_blank">Site ↗</a>
+        ${p.phpmyadmin_url ? `<a href="${esc(p.phpmyadmin_url)}" target="_blank">phpMyAdmin ↗</a>` : ""}
+        ${p.mailpit_https_url ? `<a href="${esc(p.mailpit_https_url)}" target="_blank">Mailpit ↗</a>` : ""}</div>` : "";
+    return `<div class="card">
+      <div class="row">
+        <span class="dot ${b ? "busy" : on ? "running" : ""}"></span>
+        <span class="name">${esc(p.name)}</span>
+        <span class="badge">${esc(p.type)}</span>
+        <span class="badge">${esc(status)}</span>
+        <span class="grow"></span>
+        <div class="acts">
+          <button data-a="start" data-n="${esc(p.name)}" ${b || on ? "disabled" : ""}>Start</button>
+          <button data-a="restart" data-n="${esc(p.name)}" ${b || !on ? "disabled" : ""}>Restart</button>
+          <button data-a="stop" data-n="${esc(p.name)}" class="danger" ${b || p.status === "stopped" ? "disabled" : ""}>Stop</button>
+          <button data-open="${esc(p.name)}">${t("manage")}</button>
+        </div>
+      </div>
+      <div class="meta">${esc(showPath(p.approot))}</div>
+      ${links}${b && !all ? busyHtml(b, false) : logHtml(state.logs[p.name])}
+    </div>`;
+  }).join("") || `<div class="card">${t("noProjects")}</div>`;
+
+  if (cur) renderDrawerJob();
+}
+
+$("#list").addEventListener("click", e => {
+  const b = e.target.closest("button[data-a]");
+  if (b) { b.disabled = true; return act(b.dataset.n, b.dataset.a); }
+  const o = e.target.closest("button[data-open]");
+  if (o) openDrawer(o.dataset.open);
+});
+$("#refresh").onclick = load;
+$("#poweroff").onclick = () => confirm(t("confirmPoweroff")) && act("*", "poweroff");
+
+/* ---------- drawer ---------- */
+function openDrawer(name) {
+  cur = name; detail = null; wasBusy = !!state.busy[name];
+  $("#dTitle").textContent = name;
+  $("#drawer").classList.add("open"); $("#shade").classList.add("open");
+  setTab(curTab); renderDrawerJob(); loadDetail();
+}
+function closeAll() {
+  cur = null;
+  $("#drawer").classList.remove("open"); $("#shade").classList.remove("open");
+  document.querySelectorAll(".modal").forEach(m => m.classList.remove("open"));
+  if (savedLang !== null) { cfg.lang = savedLang; savedLang = null; render(); }  // undo a language preview
+  applyStatic();
+}
+$("#dClose").onclick = closeAll; $("#shade").onclick = closeAll;
+document.querySelectorAll(".modal .cancel").forEach(b => b.onclick = closeAll);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeAll(); });
+$("#tabs").onclick = e => { const b = e.target.closest("button[data-t]"); if (b) setTab(b.dataset.t); };
+
+function setTab(tab) {
+  curTab = tab;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
+  renderTab();
+}
+async function loadDetail() {
+  const name = cur;
+  try { const d = await api("/api/project?name=" + encodeURIComponent(name)); if (cur === name) { detail = d; renderTab(); } }
+  catch (e) { if (cur === name) $("#dBody").innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+}
+function renderDrawerJob() {
+  const b = state.busy[cur] || state.busy["*"], p = state.projects.find(x => x.name === cur);
+  $("#dDot").className = "dot " + (b ? "busy" : p && p.status === "running" ? "running" : "");
+  if (b) {
+    const pre = $("#dJob pre");
+    if (pre) { const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 10; pre.textContent = b.output || "…"; if (atEnd) pre.scrollTop = pre.scrollHeight; }
+    else $("#dJob").innerHTML = `<b>${esc(L().busy[b.action] || b.action)}</b><pre>${esc(b.output || "…")}</pre>`;
+  } else {
+    $("#dJob").innerHTML = state.logs[cur] ? logHtml(state.logs[cur]) : "";
+  }
+  if (wasBusy && !b) loadDetail();
+  wasBusy = !!b;
+}
+
+function renderTab() {
+  const d = detail, el = $("#dBody");
+  if (!d) { el.innerHTML = `<p class="hint">${t("loading")}</p>`; return; }
+  const on = d.status === "running";
+  ({settings: tabSettings, domains: tabDomains, db: tabDb, logs: tabLogs, delete: tabDelete})[curTab](el, d, on);
+}
+
+const options = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
+
+function tabSettings(el, d, on) {
+  const types = opts.types.includes(d.type) ? opts.types : [d.type, ...opts.types];
+  el.innerHTML = `
+    <div class="grid2">
+      <div><label>${t("type")}</label><select id="sType">${options(types, d.type)}</select></div>
+      <div><label>PHP</label><select id="sPhp">${options(opts.php, d.php_version)}</select></div>
+      <div><label>Web server</label><select id="sWeb">${options(opts.webservers, d.webserver_type)}</select></div>
+      <div><label>Docroot</label><input id="sDoc" value="${esc(d.docroot)}" placeholder="${t("docrootPh")}"></div>
+    </div>
+    <label>${t("database")}</label><input value="${esc(d.database)}" disabled>
+    <p class="hint">${t("dbChangeHint")}</p>
+    <label>${t("folder")}</label><input value="${esc(showPath(d.approot))}" readonly onclick="this.select()">
+    <div class="foot"><button class="primary" id="sSave">${t(on ? "saveRestart" : "save")}</button></div>
+    <h3>Xdebug</h3>
+    ${on ? `<div class="row"><span>${t("status")}: <b>${t(d.xdebug ? "enabled" : "disabled")}</b></span><span class="grow"></span>
+      <button id="xToggle">${t(d.xdebug ? "disable" : "enable")}</button></div><p class="hint">${t("xdebugHint")}</p>`
+      : `<p class="hint">${t("xdebugStart")}</p>`}`;
+  $("#sSave").onclick = () => act(d.name, "settings", {type:$("#sType").value, php_version:$("#sPhp").value, webserver_type:$("#sWeb").value, docroot:$("#sDoc").value});
+  if (on) $("#xToggle").onclick = () => act(d.name, "xdebug", {on: !d.xdebug});
+}
+
+function tabDomains(el, d, on) {
+  const h = [...d.additional_hostnames], f = [...d.additional_fqdns];
+  const draw = () => {
+    const urls = [d.name, ...h].map(x => `https://${x}.ddev.site`).concat(f.map(x => `https://${x}`));
+    el.innerHTML = `
+      <h3>${t("ddevDomains")}</h3>
+      <p class="hint">${t("ddevDomainsHint", {h: code(d.name + ".ddev.site")})}</p>
+      <div class="list">${h.map((x, i) => `<div class="li"><span class="grow">${esc(x)}<span class="hint">.ddev.site</span></span><button class="danger" data-rh="${i}">✕</button></div>`).join("") || `<div class="li hint">${t("noneExtra")}</div>`}</div>
+      <div class="addrow"><div class="suffix"><input id="hNew" placeholder="${t("hostPh")}"><span>.ddev.site</span></div><button id="hAdd">${t("add")}</button></div>
+      <h3>${t("ownDomains")}</h3>
+      <p class="hint">${t("ownDomainsHint", {a: code("mysite.test"), b: code("local.mysite.gr"), f: code(hostsFile()), l: code("127.0.0.1 domain")})}</p>
+      <div class="list">${f.map((x, i) => `<div class="li"><span class="grow">${esc(x)}</span><button class="danger" data-rf="${i}">✕</button></div>`).join("") || `<div class="li hint">${t("none")}</div>`}</div>
+      <div class="addrow"><input id="fNew" placeholder="mysite.test"><button id="fAdd">${t("add")}</button></div>
+      ${f.length ? `<label>${t("hostsLines")} (${esc(hostsFile())})</label><pre>${f.map(x => "127.0.0.1 " + esc(x)).join("\n")}</pre>` : ""}
+      <h3>${t("opensAt")}</h3><div class="links">${urls.map(u => `<div>${esc(u)}</div>`).join("")}</div>
+      <div class="foot"><button class="primary" id="dSave">${t(on ? "saveRestart" : "save")}</button></div>`;
+    el.querySelectorAll("[data-rh]").forEach(b => b.onclick = () => { h.splice(+b.dataset.rh, 1); draw(); });
+    el.querySelectorAll("[data-rf]").forEach(b => b.onclick = () => { f.splice(+b.dataset.rf, 1); draw(); });
+    const add = (inp, arr, strip) => { let v = inp.value.trim().toLowerCase(); if (strip) v = v.replace(/\.ddev\.site$/, ""); if (v && !arr.includes(v)) arr.push(v); draw(); };
+    $("#hAdd").onclick = () => add($("#hNew"), h, true);
+    $("#fAdd").onclick = () => add($("#fNew"), f, false);
+    $("#hNew").onkeydown = e => e.key === "Enter" && $("#hAdd").click();
+    $("#fNew").onkeydown = e => e.key === "Enter" && $("#fAdd").click();
+    $("#dSave").onclick = () => act(d.name, "domains", {additional_hostnames:h, additional_fqdns:f});
+  };
+  draw();
+}
+
+function tabDb(el, d, on) {
+  const p = state.projects.find(x => x.name === d.name) || {};
+  const size = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+  const dis = on ? "" : "disabled";
+  el.innerHTML = `
+    <p class="hint">${t("dbInfo", {d: `<b>${esc(d.database)}</b>`, n: code("db"), u: code("db"), p: code("db"), h: code("db")})}</p>
+    ${on ? "" : `<p class="error">${t("startForDb")}</p>`}
+    <h3>phpMyAdmin</h3>
+    ${d.phpmyadmin ? (on && p.phpmyadmin_url ? `<a class="btn" href="${esc(p.phpmyadmin_url)}" target="_blank">${t("openPma")}</a>` : `<p class="hint">${t("pmaInstalled")}</p>`)
+      : `<button id="pmaInstall">${t("installPma")}</button>`}
+    <h3>${t("exportTitle")}</h3>
+    <a class="btn" ${on ? `href="/api/export?name=${encodeURIComponent(d.name)}"` : `style="opacity:.45;pointer-events:none"`}>${t("download")}</a>
+    <h3>${t("importTitle")}</h3>
+    <p class="hint">${t("importHint")}</p>
+    <div class="addrow"><input type="file" id="impFile" accept=".sql,.gz,.zip,.tgz,.tar,.bz2,.xz,.zst" ${dis}><button id="impBtn" ${dis}>${t("importBtn")}</button></div>
+    <h3>Snapshots</h3>
+    <p class="hint">${t("snapHint", {d: code(".ddev/db_snapshots")})}</p>
+    <div class="addrow"><input id="snapName" placeholder="${t("snapNamePh")}" ${dis}><button id="snapBtn" ${dis}>${t("newSnap")}</button></div>
+    <div class="list" style="margin-top:8px">${d.snapshots.map(s => `<div class="li"><span class="grow">${esc(s.name)} <span class="hint">· ${new Date(s.time*1000).toLocaleString(L().locale)} · ${size(s.size)}</span></span>
+      <button data-restore="${esc(s.name)}" ${dis}>${t("restore")}</button><button class="danger" data-sdel="${esc(s.name)}">✕</button></div>`).join("") || `<div class="li hint">${t("noSnaps")}</div>`}</div>`;
+  const pi = $("#pmaInstall"); if (pi) pi.onclick = () => act(d.name, "phpmyadmin");
+  $("#snapBtn").onclick = () => act(d.name, "snapshot", {label: $("#snapName").value.trim()});
+  el.querySelectorAll("[data-restore]").forEach(b => b.onclick = () => confirm(t("confirmRestore", {s: b.dataset.restore})) && act(d.name, "snapshot-restore", {snapshot:b.dataset.restore}));
+  el.querySelectorAll("[data-sdel]").forEach(b => b.onclick = () => confirm(t("confirmSnapDel", {s: b.dataset.sdel})) && act(d.name, "snapshot-delete", {snapshot:b.dataset.sdel}));
+  $("#impBtn").onclick = async () => {
+    const file = $("#impFile").files[0];
+    if (!file) return alert(t("chooseFile"));
+    if (!confirm(t("confirmImport", {f: file.name, n: d.name}))) return;
+    $("#impBtn").disabled = true; $("#impBtn").textContent = t("uploading");
+    try { await api("/api/import?name=" + encodeURIComponent(d.name), {method:"POST", headers:{"X-DDEV-Dashboard":"1","X-Filename":file.name}, body:file}); }
+    catch (e) { alert(t("error") + ": " + e.message); }
+    load();
+  };
+}
+
+function tabLogs(el, d, on) {
+  el.innerHTML = `<div class="row"><select id="lSvc" style="width:auto"><option value="web">${t("logsWeb")}</option><option value="db">${t("logsDb")}</option></select><button id="lLoad">${t("refresh")}</button></div>
+    ${on ? "" : `<p class="hint">${t("logsNotRunning")}</p>`}<pre id="lOut" style="max-height:60vh">${t("loading")}</pre>`;
+  const go = async () => {
+    $("#lOut").textContent = t("loading");
+    try { const j = await api(`/api/logs?name=${encodeURIComponent(d.name)}&service=${$("#lSvc").value}`); $("#lOut").textContent = j.output || t("empty"); $("#lOut").scrollTop = 1e9; }
+    catch (e) { $("#lOut").textContent = t("error") + ": " + e.message; }
+  };
+  $("#lLoad").onclick = go; $("#lSvc").onchange = go; go();
+}
+
+function tabDelete(el, d) {
+  el.innerHTML = `
+    <p>${t("deleteText", {p: esc(showPath(d.approot)), c: code(".ddev")})}</p>
+    <div class="check"><input type="checkbox" id="delSnap" checked>${t("keepSnap")}</div>
+    <label>${t("typeToConfirm", {n: esc(d.name)})}</label><input id="delName" autocomplete="off">
+    <div class="foot"><button class="danger solid" id="delBtn" disabled>${t("deleteProject")}</button></div>`;
+  $("#delName").oninput = () => $("#delBtn").disabled = $("#delName").value !== d.name;
+  $("#delBtn").onclick = () => { act(d.name, "delete", {omit_snapshot: !$("#delSnap").checked}); closeAll(); };
+}
+
+/* ---------- new project ---------- */
+function fillNew() {
+  $("#nType").innerHTML = options(opts.types, "php");
+  $("#nPhp").innerHTML = options(opts.php, "8.3");
+  $("#nWeb").innerHTML = options(opts.webservers, "apache-fpm");
+  $("#nDb").innerHTML = options(opts.databases, "mariadb:11.8");
+}
+let nameTouched = false;
+$("#newBtn").onclick = () => {
+  const dir = showPath(cfg.default_projects_dir || "");
+  $("#nPath").value = dir ? dir.replace(/[\\/]+$/, "") + sep() : "";
+  $("#nName").value = ""; nameTouched = false;
+  $("#newModal").classList.add("open"); $("#shade").classList.add("open"); $("#nPath").focus(); updUrl();
+};
+$("#nName").oninput = () => { nameTouched = true; updUrl(); };
+$("#nPath").oninput = () => {
+  if (!nameTouched) { const last = $("#nPath").value.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || ""; $("#nName").value = last.toLowerCase().replace(/\.[a-z]+$/, "").replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, ""); }
+  updUrl();
+};
+function updUrl() { const n = $("#nName").value.trim(); $("#nUrl").innerHTML = n ? t("opensOn", {u: code(`https://${n.toLowerCase()}.ddev.site`)}) : ""; }
+$("#nCreate").onclick = () => {
+  const name = $("#nName").value.trim(), path = $("#nPath").value.trim();
+  if (!name || !path || /[\\/]$/.test(path)) return alert(t("fillIn"));
+  act("", "create", {name, path, type:$("#nType").value, docroot:$("#nDocroot").value.trim(), php_version:$("#nPhp").value,
+    webserver_type:$("#nWeb").value, database:$("#nDb").value, phpmyadmin:$("#nPma").checked, start:$("#nStart").checked,
+    additional_hostnames:$("#nHosts").value.split(",").map(s => s.trim()).filter(Boolean)});
+  closeAll();
+};
+
+/* ---------- settings ---------- */
+function autostartScript(envName) {
+  // Real paths when it's this machine; typical install paths when previewing another system.
+  const here = envName === cfg.detected_env;
+  const dir = here ? cfg.panel_dir : (envName === "windows" ? "C:\\ddev-dashboard" : envName === "macos" ? "$HOME/ddev-dashboard" : "%h/ddev-dashboard");
+  const py = here ? cfg.python : (envName === "windows" ? "pythonw.exe" : "/usr/bin/python3");
+  const q = s => `'${s.replace(/'/g, "'\\''")}'`;
+  if (envName === "windows") {
+    const pyw = py.replace(/python(\.exe)?$/i, "pythonw.exe"), ps = s => `'${s.replace(/'/g, "''")}'`;
+    return `$a = New-ScheduledTaskAction -Execute ${ps(pyw)} -Argument ${ps('"' + dir + '\\server.py"')}
+Register-ScheduledTask -TaskName 'DDEV Dashboard' -Action $a -Trigger (New-ScheduledTaskTrigger -AtLogOn) -Force
+Start-ScheduledTask -TaskName 'DDEV Dashboard'`;
+  }
+  if (envName === "macos") {
+    return `cat > ~/Library/LaunchAgents/com.ddev.dashboard.plist <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.ddev.dashboard</string>
+  <key>ProgramArguments</key><array><string>${py}</string><string>${dir}/server.py</string></array>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+</dict></plist>
+EOF
+launchctl load -w ~/Library/LaunchAgents/com.ddev.dashboard.plist`;
+  }
+  return `mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/ddev-dashboard.service <<'EOF'
+[Unit]
+Description=DDEV Dashboard web UI
+
+[Service]
+ExecStart=${py} ${q(dir + "/server.py")}
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+EOF
+systemctl --user daemon-reload
+systemctl --user enable --now ddev-dashboard
+loginctl enable-linger "$USER"`;
+}
+function drawSettings() {
+  const envSel = $("#sEnv").value, eff = envSel === "auto" ? cfg.detected_env : envSel, names = L().envNames;
+  $("#sEnv").innerHTML = `<option value="auto">${t("envAuto", {e: names[cfg.detected_env]})}</option>` +
+    ["wsl", "linux", "macos", "windows"].map(e => `<option value="${e}">${names[e]}</option>`).join("");
+  $("#sEnv").value = envSel;
+  $("#sEnvHint").textContent = t("detected", {e: names[cfg.detected_env]}) + " " + t("envHint_" + eff);
+  $("#sDir").placeholder = showPath(cfg.default_projects_dir || "");
+  $("#sAutoHint").textContent = eff === "windows" ? t("autoHint_windows") : eff === "macos" ? t("autoHint_macos") : t("autoHint_systemd", {w: eff === "wsl" ? t("inWsl") : ""});
+  $("#sAuto").textContent = autostartScript(eff);
+  $("#sInfo").textContent = t("panelInfo", {d: cfg.panel_dir, p: cfg.port});
+}
+let savedLang = null;  // language before a preview in the settings dialog
+$("#setBtn").onclick = () => {
+  savedLang = cfg.lang;
+  $("#sLang").value = cfg.lang; $("#sEnv").innerHTML = `<option value="${cfg.env}"></option>`; $("#sEnv").value = cfg.env;
+  $("#sDir").value = cfg.projects_dir || "";
+  drawSettings();
+  $("#setModal").classList.add("open"); $("#shade").classList.add("open");
+};
+$("#sEnv").onchange = drawSettings;
+$("#sLang").onchange = () => { cfg.lang = $("#sLang").value; applyStatic(); drawSettings(); render(); };
+$("#sCopy").onclick = async () => { try { await navigator.clipboard.writeText($("#sAuto").textContent); $("#sCopy").textContent = t("copied"); setTimeout(() => $("#sCopy").textContent = t("copy"), 1500); } catch {} };
+$("#sSaveSet").onclick = async () => {
+  try {
+    cfg = await post("/api/settings", {lang:$("#sLang").value, env:$("#sEnv").value, projects_dir:$("#sDir").value.trim()});
+    savedLang = null; closeAll(); render();
+  } catch (e) { alert(t("error") + ": " + e.message); }
+};
+
+(async () => {
+  [cfg, opts] = await Promise.all([api("/api/settings"), api("/api/options")]);
+  applyStatic(); fillNew(); load();
+})();
+setInterval(() => load(), 5000);
+setInterval(() => { if (Object.keys(state.busy).length) load(); }, 1500);
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# local settings (language, environment, folders)
+settings.json
+
+# Python
+__pycache__/
+*.pyc
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
