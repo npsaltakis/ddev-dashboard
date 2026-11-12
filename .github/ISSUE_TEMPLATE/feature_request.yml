@@ -1,0 +1,15 @@
+name: Feature request / Πρόταση
+description: An idea for something the dashboard could do. / Μια ιδέα για κάτι που θα μπορούσε να κάνει.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do? / Τι θα ήθελες να κάνεις;
+      description: Describe the task. Which ddev command do you run for it today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could it look? / Πώς θα μπορούσε να είναι;

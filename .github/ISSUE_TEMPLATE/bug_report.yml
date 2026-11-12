@@ -1,0 +1,37 @@
+name: Bug report / Αναφορά προβλήματος
+description: Something doesn't work as expected. / Κάτι δεν δουλεύει όπως περιμένεις.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / Τι έγινε;
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output / Έξοδος
+      description: The task output shown in the dashboard ("Last: …"), or the error message.
+      render: text
+  - type: dropdown
+    id: env
+    attributes:
+      label: Where does DDEV run? / Πού τρέχει το DDEV;
+      options: [WSL, Linux, macOS, Windows]
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions / Εκδόσεις
+      description: DDEV Dashboard (page footer), DDEV (`ddev version`), Python (`python3 --version`)
+      placeholder: "Dashboard 1.0.0, DDEV v1.25.5, Python 3.12"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: "Edge 140, Firefox 145, …"
