@@ -74,6 +74,26 @@ h3:first-child{margin-top:0}
 code{font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
 .copy{position:relative}
 .copy button{position:absolute;top:6px;right:6px;padding:2px 8px;font-size:12px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.toolbar input{flex:1;min-width:180px}
+.chips{display:flex;gap:4px}
+.chips button{border-radius:20px}
+.chips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.sys summary{cursor:pointer;list-style:none;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+.sys summary::-webkit-details-marker{display:none}
+.sys summary b{color:var(--fg);font-weight:600}
+.sys{margin-top:0}
+.ok{color:var(--ok)} .warn{color:var(--busy)}
+.disk{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:10px}
+.disk div{border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px}
+.disk b{display:block;font-size:16px}
+.stat{font-size:12px;color:var(--muted)}
+.links button.link{border:0;background:none;padding:0;color:var(--acc2);font-size:13px;margin-right:14px}
+.links button.link:hover{text-decoration:underline}
+.cmds .li code{font-size:12px}
+.banner{background:color-mix(in srgb,var(--busy) 15%,var(--card));border:1px solid var(--busy);border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+footer{margin-top:28px;text-align:center;font-size:12px;color:var(--muted)}
+footer a{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -89,8 +109,19 @@ code{font-size:12px;background:var(--bg);border:1px solid var(--line);border-rad
     <button id="poweroff" class="danger"></button>
     <button id="setBtn" data-i18n="settingsBtn"></button>
   </header>
+  <div id="banner"></div>
+  <details class="card sys" id="sys"><summary id="sysSum"></summary><div id="sysBody"></div></details>
+  <div class="toolbar">
+    <input id="search" type="search" data-i18n-ph="searchPh">
+    <div class="chips" id="chips">
+      <button data-f="all" data-i18n="fAll"></button>
+      <button data-f="running" data-i18n="fRunning"></button>
+      <button data-f="stopped" data-i18n="fStopped"></button>
+    </div>
+  </div>
   <div id="jobs"></div>
   <div id="list"></div>
+  <footer id="foot"></footer>
 </div>
 
 <div class="shade" id="shade"></div>
@@ -101,6 +132,8 @@ code{font-size:12px;background:var(--bg);border:1px solid var(--line);border-rad
     <button data-t="settings" data-i18n="tabSettings"></button>
     <button data-t="domains">Domains</button>
     <button data-t="db" data-i18n="tabDb"></button>
+    <button data-t="commands" data-i18n="tabCommands"></button>
+    <button data-t="addons">Add-ons</button>
     <button data-t="logs">Logs</button>
     <button data-t="delete" data-i18n="tabDelete"></button>
   </div>
@@ -109,6 +142,9 @@ code{font-size:12px;background:var(--bg);border:1px solid var(--line);border-rad
 
 <div class="modal" id="newModal">
   <h2 data-i18n="newProjectTitle"></h2>
+  <label data-i18n="nGit"></label>
+  <input id="nGit" placeholder="https://github.com/user/repo.git">
+  <p class="hint" data-i18n="nGitHint"></p>
   <label data-i18n="nPath"></label>
   <input id="nPath">
   <div class="grid2">
@@ -161,7 +197,7 @@ el: {
   dbInfo:"Βάση: {d} · όνομα {n}, χρήστης {u}, κωδικός {p}, host {h}", startForDb:"Ξεκίνα το project για εξαγωγή, εισαγωγή και snapshots.",
   openPma:"Άνοιγμα phpMyAdmin ↗", pmaInstalled:"Εγκατεστημένο. Ανοίγει όταν τρέχει το project.", installPma:"Εγκατάσταση phpMyAdmin",
   exportTitle:"Εξαγωγή (backup)", download:"Λήψη .sql.gz", importTitle:"Εισαγωγή", importHint:"Αντικαθιστά όλη την τρέχουσα βάση. Δεκτά: .sql, .sql.gz, .zip, .tar.gz.",
-  importBtn:"Εισαγωγή", uploading:"Ανέβασμα…", chooseFile:"Διάλεξε αρχείο.", confirmImport:"Εισαγωγή του «{f}» στο {n}; Η τρέχουσα βάση θα αντικατασταθεί.",
+  importBtn:"Εισαγωγή", uploading:"Ανέβασμα…", chooseFile:"Διάλεξε αρχείο.", pickFile:"Επιλογή αρχείου…", noFile:"Δεν επιλέχθηκε αρχείο", confirmImport:"Εισαγωγή του «{f}» στο {n}; Η τρέχουσα βάση θα αντικατασταθεί.",
   snapHint:"Γρήγορα αντίγραφα της βάσης, μένουν στο {d} του project.", snapNamePh:"Όνομα (προαιρετικό)", newSnap:"Νέο snapshot",
   noSnaps:"Κανένα snapshot", restore:"Επαναφορά", confirmRestore:"Επαναφορά του «{s}»; Η τρέχουσα βάση θα αντικατασταθεί.", confirmSnapDel:"Διαγραφή του snapshot «{s}»;",
   logsWeb:"web (PHP, web server)", logsDb:"db (βάση)", logsNotRunning:"Το project δεν τρέχει, μπορεί να μην υπάρχουν logs.", empty:"(κενό)",
@@ -182,10 +218,30 @@ el: {
   panelInfo:"Dashboard: {d} · port {p}",
   envNames:{wsl:"WSL (Ubuntu)", linux:"Linux", macos:"macOS", windows:"Windows"},
   act:{start:"Start", stop:"Stop", restart:"Restart", poweroff:"Stop όλα", create:"Δημιουργία", settings:"Ρυθμίσεις", domains:"Domains", xdebug:"Xdebug",
-    phpmyadmin:"phpMyAdmin", snapshot:"Snapshot", "snapshot-restore":"Επαναφορά snapshot", "snapshot-delete":"Διαγραφή snapshot", "import-db":"Εισαγωγή βάσης", delete:"Διαγραφή"},
+    phpmyadmin:"phpMyAdmin", snapshot:"Snapshot", "snapshot-restore":"Επαναφορά snapshot", "snapshot-delete":"Διαγραφή snapshot", "import-db":"Εισαγωγή βάσης", delete:"Διαγραφή",
+    exec:"Εντολή", "addon-get":"Εγκατάσταση add-on", "addon-remove":"Αφαίρεση add-on"},
   busy:{start:"Εκκίνηση…", stop:"Σταμάτημα…", restart:"Επανεκκίνηση…", poweroff:"Σταματούν όλα…", create:"Δημιουργία…", settings:"Αλλαγή ρυθμίσεων…",
     domains:"Αλλαγή domains…", xdebug:"Xdebug…", phpmyadmin:"Εγκατάσταση phpMyAdmin…", snapshot:"Snapshot…", "snapshot-restore":"Επαναφορά snapshot…",
-    "snapshot-delete":"Διαγραφή snapshot…", "import-db":"Εισαγωγή βάσης…", delete:"Διαγραφή…"},
+    "snapshot-delete":"Διαγραφή snapshot…", "import-db":"Εισαγωγή βάσης…", delete:"Διαγραφή…",
+    exec:"Εκτέλεση εντολής…", "addon-get":"Εγκατάσταση add-on…", "addon-remove":"Αφαίρεση add-on…"},
+  searchPh:"Αναζήτηση project…", fAll:"Όλα", fRunning:"Τρέχουν", fStopped:"Σταματημένα", noMatch:"Κανένα project δεν ταιριάζει.",
+  openFolder:"📁 Φάκελος", vscode:"VS Code",
+  sysDocker:"Docker", sysDockerDown:"Το Docker δεν απαντά", sysNewer:"νεότερη: {v}", sysUpToDate:"ενημερωμένο", sysDisk:"Χώρος Docker",
+  sysReclaim:"μπορούν να ελευθερωθούν {v}", diskTypes:{"Images":"Images", "Containers":"Containers", "Local Volumes":"Volumes (βάσεις)", "Build Cache":"Build cache"},
+  sysCleanHint:"Για καθάρισμα: {c} (σβήνει μόνο ό,τι δεν χρησιμοποιείται).",
+  tabCommands:"Εντολές", cmdQuick:"Γρήγορες εντολές", cmdNone:"Δεν υπάρχουν έτοιμες εντολές για αυτό το project (π.χ. δεν έχει composer.json ή package.json).",
+  run:"Εκτέλεση", cmdCustom:"Δική σου εντολή", cmdCustomHint:"Τρέχει μέσα στο container web του project, στον φάκελο του project ({c}).",
+  cmdCustomPh:"π.χ. php -v ή composer require vendor/package", startForCmd:"Ξεκίνα το project για να τρέξεις εντολές.",
+  addonsInstalled:"Εγκατεστημένα", addonsNone:"Κανένα add-on", addonsAvailable:"Διαθέσιμα", install:"Εγκατάσταση", remove:"Αφαίρεση",
+  addonOther:"Άλλο add-on (owner/repo)", addonHint:"Μετά την εγκατάσταση ή αφαίρεση γίνεται restart, αν το project τρέχει.",
+  confirmAddonRemove:"Αφαίρεση του add-on «{a}»;", addonsList:"Όλα τα add-ons ↗",
+  addonDesc:{"ddev/ddev-phpmyadmin":"Διαχείριση βάσης από τον browser", "ddev/ddev-adminer":"Ελαφρύ εργαλείο βάσης (Adminer)",
+    "ddev/ddev-redis":"Redis cache", "ddev/ddev-memcached":"Memcached cache", "ddev/ddev-solr":"Αναζήτηση Apache Solr",
+    "ddev/ddev-elasticsearch":"Αναζήτηση Elasticsearch", "ddev/ddev-opensearch":"Αναζήτηση OpenSearch", "ddev/ddev-mongo":"Βάση MongoDB",
+    "ddev/ddev-rabbitmq":"Ουρές μηνυμάτων RabbitMQ", "ddev/ddev-varnish":"Varnish cache μπροστά από το site", "ddev/ddev-cron":"Προγραμματισμένες εργασίες (cron)",
+    "ddev/ddev-selenium-standalone-chrome":"Chrome για αυτόματα tests"},
+  nGit:"Clone από git (προαιρετικό)", nGitHint:"Αν βάλεις URL, το repo γίνεται clone στον φάκελο. Αν έχει ήδη .ddev, χρησιμοποιείται όπως είναι.",
+  demoBanner:"Demo: δείχνει δοκιμαστικά δεδομένα και οι ενέργειες είναι απενεργοποιημένες.",
   locale:"el-GR"
 },
 en: {
@@ -203,7 +259,7 @@ en: {
   dbInfo:"Database: {d} · name {n}, user {u}, password {p}, host {h}", startForDb:"Start the project to export, import and take snapshots.",
   openPma:"Open phpMyAdmin ↗", pmaInstalled:"Installed. Opens when the project is running.", installPma:"Install phpMyAdmin",
   exportTitle:"Export (backup)", download:"Download .sql.gz", importTitle:"Import", importHint:"Replaces the whole current database. Accepts .sql, .sql.gz, .zip, .tar.gz.",
-  importBtn:"Import", uploading:"Uploading…", chooseFile:"Choose a file.", confirmImport:"Import “{f}” into {n}? The current database will be replaced.",
+  importBtn:"Import", uploading:"Uploading…", chooseFile:"Choose a file.", pickFile:"Choose file…", noFile:"No file chosen", confirmImport:"Import “{f}” into {n}? The current database will be replaced.",
   snapHint:"Quick database copies, kept in the project's {d}.", snapNamePh:"Name (optional)", newSnap:"New snapshot",
   noSnaps:"No snapshots", restore:"Restore", confirmRestore:"Restore “{s}”? The current database will be replaced.", confirmSnapDel:"Delete snapshot “{s}”?",
   logsWeb:"web (PHP, web server)", logsDb:"db (database)", logsNotRunning:"The project isn't running, there may be no logs.", empty:"(empty)",
@@ -224,10 +280,30 @@ en: {
   panelInfo:"Dashboard: {d} · port {p}",
   envNames:{wsl:"WSL (Ubuntu)", linux:"Linux", macos:"macOS", windows:"Windows"},
   act:{start:"Start", stop:"Stop", restart:"Restart", poweroff:"Stop all", create:"Create", settings:"Settings", domains:"Domains", xdebug:"Xdebug",
-    phpmyadmin:"phpMyAdmin", snapshot:"Snapshot", "snapshot-restore":"Restore snapshot", "snapshot-delete":"Delete snapshot", "import-db":"Import database", delete:"Delete"},
+    phpmyadmin:"phpMyAdmin", snapshot:"Snapshot", "snapshot-restore":"Restore snapshot", "snapshot-delete":"Delete snapshot", "import-db":"Import database", delete:"Delete",
+    exec:"Command", "addon-get":"Install add-on", "addon-remove":"Remove add-on"},
   busy:{start:"Starting…", stop:"Stopping…", restart:"Restarting…", poweroff:"Stopping all…", create:"Creating…", settings:"Applying settings…",
     domains:"Updating domains…", xdebug:"Xdebug…", phpmyadmin:"Installing phpMyAdmin…", snapshot:"Snapshot…", "snapshot-restore":"Restoring snapshot…",
-    "snapshot-delete":"Deleting snapshot…", "import-db":"Importing database…", delete:"Deleting…"},
+    "snapshot-delete":"Deleting snapshot…", "import-db":"Importing database…", delete:"Deleting…",
+    exec:"Running command…", "addon-get":"Installing add-on…", "addon-remove":"Removing add-on…"},
+  searchPh:"Search projects…", fAll:"All", fRunning:"Running", fStopped:"Stopped", noMatch:"No project matches.",
+  openFolder:"📁 Folder", vscode:"VS Code",
+  sysDocker:"Docker", sysDockerDown:"Docker isn't responding", sysNewer:"newer: {v}", sysUpToDate:"up to date", sysDisk:"Docker disk usage",
+  sysReclaim:"{v} can be freed", diskTypes:{"Images":"Images", "Containers":"Containers", "Local Volumes":"Volumes (databases)", "Build Cache":"Build cache"},
+  sysCleanHint:"To clean up: {c} (removes only what isn't in use).",
+  tabCommands:"Commands", cmdQuick:"Quick commands", cmdNone:"No ready-made commands for this project (e.g. no composer.json or package.json).",
+  run:"Run", cmdCustom:"Your own command", cmdCustomHint:"Runs inside the project's web container, in the project folder ({c}).",
+  cmdCustomPh:"e.g. php -v or composer require vendor/package", startForCmd:"Start the project to run commands.",
+  addonsInstalled:"Installed", addonsNone:"No add-ons", addonsAvailable:"Available", install:"Install", remove:"Remove",
+  addonOther:"Other add-on (owner/repo)", addonHint:"After installing or removing, the project restarts if it's running.",
+  confirmAddonRemove:"Remove the add-on “{a}”?", addonsList:"All add-ons ↗",
+  addonDesc:{"ddev/ddev-phpmyadmin":"Manage the database in the browser", "ddev/ddev-adminer":"Lightweight database tool (Adminer)",
+    "ddev/ddev-redis":"Redis cache", "ddev/ddev-memcached":"Memcached cache", "ddev/ddev-solr":"Apache Solr search",
+    "ddev/ddev-elasticsearch":"Elasticsearch search", "ddev/ddev-opensearch":"OpenSearch search", "ddev/ddev-mongo":"MongoDB database",
+    "ddev/ddev-rabbitmq":"RabbitMQ message queues", "ddev/ddev-varnish":"Varnish cache in front of the site", "ddev/ddev-cron":"Scheduled tasks (cron)",
+    "ddev/ddev-selenium-standalone-chrome":"Chrome for automated tests"},
+  nGit:"Clone from git (optional)", nGitHint:"With a URL, the repo is cloned into the folder. If it already has .ddev, that config is used as is.",
+  demoBanner:"Demo: showing sample data, actions are disabled.",
   locale:"en-GB"
 }};
 
@@ -244,7 +320,7 @@ const sep = () => isWin() ? "\\" : "/";
 const hostsFile = () => isWin() ? "C:\\Windows\\System32\\drivers\\etc\\hosts" : "/etc/hosts";
 
 let state = {projects:[], busy:{}, logs:{}}, opts = null, loading = false;
-let cur = null, curTab = "settings", detail = null, wasBusy = false;
+let cur = null, curTab = "settings", detail = null, wasBusy = false, shownLog = undefined;
 
 function applyStatic() {
   document.documentElement.lang = cfg.lang;
@@ -274,7 +350,7 @@ async function load() {
 }
 
 const fmtTime = s => new Date(s * 1000).toLocaleTimeString(L().locale);
-const logHtml = log => log ? `<details class="${log.ok ? "" : "fail"}"><summary>${t("last")}: ${esc(L().act[log.action] || log.action)} ${log.ok ? "✓" : t("failed")} · ${fmtTime(log.time)}</summary><pre>${esc(log.output)}</pre></details>` : "";
+const logHtml = (log, open) => log ? `<details class="${log.ok ? "" : "fail"}" ${open ? "open" : ""}><summary>${t("last")}: ${esc(L().act[log.action] || log.action)} ${log.ok ? "✓" : t("failed")} · ${fmtTime(log.time)}</summary><pre>${esc(log.output)}</pre></details>` : "";
 const busyHtml = (b, open) => b ? `<details ${open ? "open" : ""}><summary>${esc(L().busy[b.action] || b.action)}</summary><pre>${esc(b.output || "…")}</pre></details>` : "";
 
 function render() {
@@ -286,18 +362,25 @@ function render() {
   const keys = [...new Set([...Object.keys(state.busy), ...Object.keys(state.logs)])].filter(k => !names.has(k));
   $("#jobs").innerHTML = keys.map(k => `<div class="card"><div class="row"><span class="dot ${state.busy[k] ? "busy" : ""}"></span><span class="name">${k === "*" ? t("allProjects") : esc(k)}</span></div>${busyHtml(state.busy[k], true)}${state.busy[k] ? "" : logHtml(state.logs[k])}</div>`).join("");
 
-  $("#list").innerHTML = ps.map(p => {
+  const q = search.toLowerCase();
+  const shown = ps.filter(p => (filter === "all" || (filter === "running" ? p.status === "running" : p.status !== "running"))
+    && (!q || p.name.toLowerCase().includes(q) || (p.type || "").includes(q) || showPath(p.approot).toLowerCase().includes(q)));
+  $("#list").innerHTML = shown.map(p => {
     const b = state.busy[p.name] || all, on = p.status === "running";
     const status = b ? (L().busy[b.action] || b.action) : (p.status_desc || p.status);
-    const links = on ? `<div class="links"><a href="${esc(p.primary_url)}" target="_blank">Site ↗</a>
+    const st = on && sys && sys.stats && sys.stats[p.name];
+    const links = `<div class="links">${on ? `<a href="${esc(p.primary_url)}" target="_blank">Site ↗</a>
         ${p.phpmyadmin_url ? `<a href="${esc(p.phpmyadmin_url)}" target="_blank">phpMyAdmin ↗</a>` : ""}
-        ${p.mailpit_https_url ? `<a href="${esc(p.mailpit_https_url)}" target="_blank">Mailpit ↗</a>` : ""}</div>` : "";
+        ${p.mailpit_https_url ? `<a href="${esc(p.mailpit_https_url)}" target="_blank">Mailpit ↗</a>` : ""}` : ""}
+        <button class="link" data-folder="${esc(p.name)}">${t("openFolder")}</button>
+        <a href="${esc(vscodeUrl(p.approot))}">${t("vscode")} ↗</a></div>`;
     return `<div class="card">
       <div class="row">
         <span class="dot ${b ? "busy" : on ? "running" : ""}"></span>
         <span class="name">${esc(p.name)}</span>
         <span class="badge">${esc(p.type)}</span>
         <span class="badge">${esc(status)}</span>
+        ${st ? `<span class="stat">CPU ${st.cpu}% · RAM ${fmtBytes(st.mem)}</span>` : ""}
         <span class="grow"></span>
         <div class="acts">
           <button data-a="start" data-n="${esc(p.name)}" ${b || on ? "disabled" : ""}>Start</button>
@@ -309,12 +392,54 @@ function render() {
       <div class="meta">${esc(showPath(p.approot))}</div>
       ${links}${b && !all ? busyHtml(b, false) : logHtml(state.logs[p.name])}
     </div>`;
-  }).join("") || `<div class="card">${t("noProjects")}</div>`;
+  }).join("") || `<div class="card">${t(ps.length ? "noMatch" : "noProjects")}</div>`;
 
+  document.querySelectorAll("#chips button").forEach(b => b.classList.toggle("on", b.dataset.f === filter));
   if (cur) renderDrawerJob();
 }
 
+/* ---------- search / filter (remembered per browser) ---------- */
+const store = {get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+               set(k, v) { try { localStorage.setItem(k, v); } catch {} }};
+let search = "", filter = store.get("ddd.filter", "all");
+$("#search").oninput = e => { search = e.target.value.trim(); render(); };
+$("#chips").onclick = e => { const b = e.target.closest("button[data-f]"); if (b) { filter = b.dataset.f; store.set("ddd.filter", filter); render(); } };
+
+/* ---------- helpers ---------- */
+const fmtBytes = n => n >= 1e9 ? (n / 1e9).toFixed(1) + " GB" : n >= 1e6 ? Math.round(n / 1e6) + " MB" : Math.round((n || 0) / 1e3) + " KB";
+function vscodeUrl(p) {
+  const e = cfg.effective_env;
+  if (e === "wsl") {
+    const m = /^\/mnt\/([a-z])\/(.*)$/.exec(p);
+    if (m) return `vscode://file/${m[1].toUpperCase()}:/${encodeURI(m[2])}`;
+    return `vscode://vscode-remote/wsl+${encodeURIComponent(cfg.wsl_distro || "Ubuntu")}${encodeURI(p)}`;
+  }
+  if (e === "windows") return "vscode://file/" + encodeURI(p.replace(/\\/g, "/"));
+  return "vscode://file" + encodeURI(p);
+}
+
+/* ---------- system card ---------- */
+let sys = null;
+async function loadSystem() {
+  try { sys = await api("/api/system"); renderSystem(); render(); } catch {}
+}
+function renderSystem() {
+  if (!sys) return;
+  const lt = sys.latest, newer = lt && lt.version && sys.ddev && lt.version !== sys.ddev;
+  const reclaim = sys.disk.reduce((a, d) => a + parseSize(d.reclaimable), 0);
+  $("#sysSum").innerHTML = `<span>DDEV <b>${esc(sys.ddev || "?")}</b> ${newer ? `<a class="warn" href="${esc(lt.url)}" target="_blank">(${t("sysNewer", {v: esc(lt.version)})} ↗)</a>` : lt ? `<span class="ok">✓ ${t("sysUpToDate")}</span>` : ""}</span>
+    <span>·</span><span>${t("sysDocker")} ${sys.docker_ok ? `<b>${esc(sys.docker || "")}</b> <span class="ok">✓</span>` : `<span class="error">${t("sysDockerDown")}</span>`}</span>
+    <span>·</span><span>${t("sysDisk")}: <b>${fmtBytes(sys.disk.reduce((a, d) => a + parseSize(d.size), 0))}</b></span>
+    <span class="grow"></span><span>▾</span>`;
+  $("#sysBody").innerHTML = `<div class="disk">${sys.disk.map(d => `<div>${esc((L().diskTypes || {})[d.type] || d.type)}<b>${esc(d.size)}</b><span class="hint">${t("sysReclaim", {v: esc((d.reclaimable || "").replace(/\s*\(.*\)/, ""))})}</span></div>`).join("")}</div>
+    ${reclaim > 0 ? `<p class="hint">${t("sysCleanHint", {c: code("ddev clean --all")})}</p>` : ""}
+    ${sys.docker_platform ? `<p class="hint">Docker: ${esc(sys.docker_platform)}</p>` : ""}`;
+}
+const parseSize = s => { const m = /^([\d.]+)\s*([kKMGT]?)B/.exec(s || ""); return m ? parseFloat(m[1]) * ({"": 1, k: 1e3, K: 1e3, M: 1e6, G: 1e9, T: 1e12}[m[2]]) : 0; };
+
 $("#list").addEventListener("click", e => {
+  const f = e.target.closest("button[data-folder]");
+  if (f) return act(f.dataset.folder, "open");
   const b = e.target.closest("button[data-a]");
   if (b) { b.disabled = true; return act(b.dataset.n, b.dataset.a); }
   const o = e.target.closest("button[data-open]");
@@ -325,13 +450,14 @@ $("#poweroff").onclick = () => confirm(t("confirmPoweroff")) && act("*", "powero
 
 /* ---------- drawer ---------- */
 function openDrawer(name) {
-  cur = name; detail = null; wasBusy = !!state.busy[name];
+  cur = name; detail = null; wasBusy = !!state.busy[name]; shownLog = undefined;
   $("#dTitle").textContent = name;
   $("#drawer").classList.add("open"); $("#shade").classList.add("open");
   setTab(curTab); renderDrawerJob(); loadDetail();
 }
 function closeAll() {
   cur = null;
+  if (location.hash) history.replaceState(null, "", location.pathname);
   $("#drawer").classList.remove("open"); $("#shade").classList.remove("open");
   document.querySelectorAll(".modal").forEach(m => m.classList.remove("open"));
   if (savedLang !== null) { cfg.lang = savedLang; savedLang = null; render(); }  // undo a language preview
@@ -345,6 +471,7 @@ $("#tabs").onclick = e => { const b = e.target.closest("button[data-t]"); if (b)
 function setTab(tab) {
   curTab = tab;
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
+  if (cur) history.replaceState(null, "", `#project=${encodeURIComponent(cur)}&tab=${tab}`);  // shareable deep link
   renderTab();
 }
 async function loadDetail() {
@@ -356,11 +483,14 @@ function renderDrawerJob() {
   const b = state.busy[cur] || state.busy["*"], p = state.projects.find(x => x.name === cur);
   $("#dDot").className = "dot " + (b ? "busy" : p && p.status === "running" ? "running" : "");
   if (b) {
+    shownLog = undefined;
     const pre = $("#dJob pre");
     if (pre) { const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 10; pre.textContent = b.output || "…"; if (atEnd) pre.scrollTop = pre.scrollHeight; }
     else $("#dJob").innerHTML = `<b>${esc(L().busy[b.action] || b.action)}</b><pre>${esc(b.output || "…")}</pre>`;
   } else {
-    $("#dJob").innerHTML = state.logs[cur] ? logHtml(state.logs[cur]) : "";
+    const log = state.logs[cur];  // command output is what you came for: show it open
+    const key = log ? log.time : null;
+    if (key !== shownLog) { $("#dJob").innerHTML = log ? logHtml(log, log.action === "exec" || !log.ok) : ""; shownLog = key; }
   }
   if (wasBusy && !b) loadDetail();
   wasBusy = !!b;
@@ -370,7 +500,41 @@ function renderTab() {
   const d = detail, el = $("#dBody");
   if (!d) { el.innerHTML = `<p class="hint">${t("loading")}</p>`; return; }
   const on = d.status === "running";
-  ({settings: tabSettings, domains: tabDomains, db: tabDb, logs: tabLogs, delete: tabDelete})[curTab](el, d, on);
+  ({settings: tabSettings, domains: tabDomains, db: tabDb, commands: tabCommands, addons: tabAddons, logs: tabLogs, delete: tabDelete})[curTab](el, d, on);
+}
+
+function tabCommands(el, d, on) {
+  el.innerHTML = `
+    ${on ? "" : `<p class="error">${t("startForCmd")}</p>`}
+    <h3>${t("cmdQuick")}</h3>
+    ${d.commands.length ? `<div class="list cmds">${d.commands.map(c => `<div class="li"><span class="grow"><code>${esc(c.cmd)}</code></span><button data-cmd="${esc(c.id)}" ${on ? "" : "disabled"}>${t("run")}</button></div>`).join("")}</div>`
+      : `<p class="hint">${t("cmdNone")}</p>`}
+    <h3>${t("cmdCustom")}</h3>
+    <p class="hint">${t("cmdCustomHint", {c: code("ddev exec")})}</p>
+    <div class="addrow"><input id="cmdIn" placeholder="${t("cmdCustomPh")}" ${on ? "" : "disabled"}><button id="cmdRun" class="primary" ${on ? "" : "disabled"}>${t("run")}</button></div>`;
+  el.querySelectorAll("[data-cmd]").forEach(b => b.onclick = () => act(d.name, "exec", {command: b.dataset.cmd}));
+  const go = () => { const v = $("#cmdIn").value.trim(); if (v) act(d.name, "exec", {custom: v}); };
+  $("#cmdRun").onclick = go;
+  $("#cmdIn").onkeydown = e => e.key === "Enter" && go();
+}
+
+function tabAddons(el, d) {
+  const have = new Set(d.addons.map(a => a.repo));
+  const desc = r => (L().addonDesc || {})[r] || "";
+  el.innerHTML = `
+    <p class="hint">${t("addonHint")}</p>
+    <h3>${t("addonsInstalled")}</h3>
+    <div class="list">${d.addons.map(a => `<div class="li"><span class="grow"><b>${esc(a.name)}</b> <span class="hint">${esc(a.repo || "")} ${esc(a.version || "")}</span></span>
+      <button class="danger" data-rm="${esc(a.name)}">${t("remove")}</button></div>`).join("") || `<div class="li hint">${t("addonsNone")}</div>`}</div>
+    <h3>${t("addonsAvailable")}</h3>
+    <div class="list">${opts.addons.filter(r => !have.has(r)).map(r => `<div class="li"><span class="grow"><b>${esc(r.replace(/^ddev\/ddev-/, ""))}</b> <span class="hint">${esc(desc(r))}</span></span>
+      <button data-get="${esc(r)}">${t("install")}</button></div>`).join("")}</div>
+    <label>${t("addonOther")}</label>
+    <div class="addrow"><input id="addonIn" placeholder="ddev/ddev-redis"><button id="addonGet">${t("install")}</button></div>
+    <p class="hint"><a href="https://addons.ddev.com" target="_blank">${t("addonsList")}</a></p>`;
+  el.querySelectorAll("[data-get]").forEach(b => b.onclick = () => act(d.name, "addon-get", {repo: b.dataset.get}));
+  el.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => confirm(t("confirmAddonRemove", {a: b.dataset.rm})) && act(d.name, "addon-remove", {addon: b.dataset.rm}));
+  $("#addonGet").onclick = () => { const v = $("#addonIn").value.trim(); if (v) act(d.name, "addon-get", {repo: v}); };
 }
 
 const options = (list, v) => list.map(x => `<option ${x === v ? "selected" : ""}>${esc(x)}</option>`).join("");
@@ -438,7 +602,8 @@ function tabDb(el, d, on) {
     <a class="btn" ${on ? `href="/api/export?name=${encodeURIComponent(d.name)}"` : `style="opacity:.45;pointer-events:none"`}>${t("download")}</a>
     <h3>${t("importTitle")}</h3>
     <p class="hint">${t("importHint")}</p>
-    <div class="addrow"><input type="file" id="impFile" accept=".sql,.gz,.zip,.tgz,.tar,.bz2,.xz,.zst" ${dis}><button id="impBtn" ${dis}>${t("importBtn")}</button></div>
+    <div class="addrow" style="align-items:center"><label class="btn" ${on ? "" : `style="opacity:.45;pointer-events:none"`}><input type="file" id="impFile" accept=".sql,.gz,.zip,.tgz,.tar,.bz2,.xz,.zst" hidden ${dis}>${t("pickFile")}</label>
+      <span class="hint grow" id="impName">${t("noFile")}</span><button id="impBtn" ${dis}>${t("importBtn")}</button></div>
     <h3>Snapshots</h3>
     <p class="hint">${t("snapHint", {d: code(".ddev/db_snapshots")})}</p>
     <div class="addrow"><input id="snapName" placeholder="${t("snapNamePh")}" ${dis}><button id="snapBtn" ${dis}>${t("newSnap")}</button></div>
@@ -448,6 +613,7 @@ function tabDb(el, d, on) {
   $("#snapBtn").onclick = () => act(d.name, "snapshot", {label: $("#snapName").value.trim()});
   el.querySelectorAll("[data-restore]").forEach(b => b.onclick = () => confirm(t("confirmRestore", {s: b.dataset.restore})) && act(d.name, "snapshot-restore", {snapshot:b.dataset.restore}));
   el.querySelectorAll("[data-sdel]").forEach(b => b.onclick = () => confirm(t("confirmSnapDel", {s: b.dataset.sdel})) && act(d.name, "snapshot-delete", {snapshot:b.dataset.sdel}));
+  $("#impFile").onchange = () => { const f = $("#impFile").files[0]; $("#impName").textContent = f ? f.name : t("noFile"); };
   $("#impBtn").onclick = async () => {
     const file = $("#impFile").files[0];
     if (!file) return alert(t("chooseFile"));
@@ -487,23 +653,32 @@ function fillNew() {
   $("#nWeb").innerHTML = options(opts.webservers, "apache-fpm");
   $("#nDb").innerHTML = options(opts.databases, "mariadb:11.8");
 }
-let nameTouched = false;
-$("#newBtn").onclick = () => {
-  const dir = showPath(cfg.default_projects_dir || "");
-  $("#nPath").value = dir ? dir.replace(/[\\/]+$/, "") + sep() : "";
-  $("#nName").value = ""; nameTouched = false;
-  $("#newModal").classList.add("open"); $("#shade").classList.add("open"); $("#nPath").focus(); updUrl();
-};
+let nameTouched = false, pathTouched = false;
+const baseDir = () => { const dir = showPath(cfg.default_projects_dir || ""); return dir ? dir.replace(/[\\/]+$/, "") + sep() : ""; };
+function openNew() {
+  $("#nPath").value = baseDir(); $("#nGit").value = "";
+  $("#nName").value = ""; nameTouched = false; pathTouched = false;
+  $("#newModal").classList.add("open"); $("#shade").classList.add("open"); $("#nGit").focus(); updUrl();
+  history.replaceState(null, "", "#new");
+}
+$("#newBtn").onclick = openNew;
 $("#nName").oninput = () => { nameTouched = true; updUrl(); };
-$("#nPath").oninput = () => {
-  if (!nameTouched) { const last = $("#nPath").value.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || ""; $("#nName").value = last.toLowerCase().replace(/\.[a-z]+$/, "").replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, ""); }
-  updUrl();
+const nameFromPath = () => {
+  if (nameTouched) return;
+  const last = $("#nPath").value.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || "";
+  $("#nName").value = last.toLowerCase().replace(/\.[a-z]+$/, "").replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+};
+$("#nPath").oninput = () => { pathTouched = true; nameFromPath(); updUrl(); };
+$("#nGit").oninput = () => {   // suggest folder and name from the repo name
+  const repo = ($("#nGit").value.trim().replace(/\/+$/, "").split(/[/:]/).pop() || "").replace(/\.git$/, "");
+  if (!pathTouched) $("#nPath").value = baseDir() + repo;
+  nameFromPath(); updUrl();
 };
 function updUrl() { const n = $("#nName").value.trim(); $("#nUrl").innerHTML = n ? t("opensOn", {u: code(`https://${n.toLowerCase()}.ddev.site`)}) : ""; }
 $("#nCreate").onclick = () => {
   const name = $("#nName").value.trim(), path = $("#nPath").value.trim();
   if (!name || !path || /[\\/]$/.test(path)) return alert(t("fillIn"));
-  act("", "create", {name, path, type:$("#nType").value, docroot:$("#nDocroot").value.trim(), php_version:$("#nPhp").value,
+  act("", "create", {name, path, git_url:$("#nGit").value.trim(), type:$("#nType").value, docroot:$("#nDocroot").value.trim(), php_version:$("#nPhp").value,
     webserver_type:$("#nWeb").value, database:$("#nDb").value, phpmyadmin:$("#nPma").checked, start:$("#nStart").checked,
     additional_hostnames:$("#nHosts").value.split(",").map(s => s.trim()).filter(Boolean)});
   closeAll();
@@ -564,13 +739,15 @@ function drawSettings() {
   $("#sInfo").textContent = t("panelInfo", {d: cfg.panel_dir, p: cfg.port});
 }
 let savedLang = null;  // language before a preview in the settings dialog
-$("#setBtn").onclick = () => {
+function openSettings() {
   savedLang = cfg.lang;
   $("#sLang").value = cfg.lang; $("#sEnv").innerHTML = `<option value="${cfg.env}"></option>`; $("#sEnv").value = cfg.env;
   $("#sDir").value = cfg.projects_dir || "";
   drawSettings();
   $("#setModal").classList.add("open"); $("#shade").classList.add("open");
-};
+  history.replaceState(null, "", "#settings");
+}
+$("#setBtn").onclick = openSettings;
 $("#sEnv").onchange = drawSettings;
 $("#sLang").onchange = () => { cfg.lang = $("#sLang").value; applyStatic(); drawSettings(); render(); };
 $("#sCopy").onclick = async () => { try { await navigator.clipboard.writeText($("#sAuto").textContent); $("#sCopy").textContent = t("copied"); setTimeout(() => $("#sCopy").textContent = t("copy"), 1500); } catch {} };
@@ -581,10 +758,24 @@ $("#sSaveSet").onclick = async () => {
   } catch (e) { alert(t("error") + ": " + e.message); }
 };
 
+/* ---------- deep links: #new, #settings, #project=<name>&tab=<tab> ---------- */
+function applyHash() {
+  const h = location.hash.slice(1);
+  if (h === "new") return openNew();
+  if (h === "settings") return openSettings();
+  const p = new URLSearchParams(h);
+  if (p.get("project")) { if (p.get("tab")) curTab = p.get("tab"); openDrawer(p.get("project")); }
+}
+window.addEventListener("hashchange", applyHash);
+
 (async () => {
   [cfg, opts] = await Promise.all([api("/api/settings"), api("/api/options")]);
-  applyStatic(); fillNew(); load();
+  applyStatic(); fillNew();
+  $("#banner").innerHTML = cfg.demo && !location.search.includes("screenshot") ? `<div class="banner">${t("demoBanner")}</div>` : "";
+  $("#foot").innerHTML = `DDEV Dashboard ${esc(cfg.version)} · <a href="https://github.com/npsaltakis/ddev-dashboard" target="_blank">GitHub</a>`;
+  await load(); loadSystem(); applyHash();
 })();
+setInterval(loadSystem, 20000);
 setInterval(() => load(), 5000);
 setInterval(() => { if (Object.keys(state.busy).length) load(); }, 1500);
 </script>

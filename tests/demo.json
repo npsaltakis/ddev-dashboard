@@ -1,0 +1,92 @@
+{
+  "projects": [
+    {"name": "acme-shop", "type": "laravel", "status": "running", "status_desc": "running",
+     "approot": "/mnt/d/Projects/acme-shop", "primary_url": "https://acme-shop.ddev.site",
+     "httpsurl": "https://acme-shop.ddev.site", "mailpit_https_url": "https://acme-shop.ddev.site:8026",
+     "phpmyadmin_url": "https://acme-shop.ddev.site:8037"},
+    {"name": "company-blog", "type": "wordpress", "status": "running", "status_desc": "running",
+     "approot": "/mnt/d/Projects/company-blog", "primary_url": "https://company-blog.ddev.site",
+     "httpsurl": "https://company-blog.ddev.site", "mailpit_https_url": "https://company-blog.ddev.site:8026",
+     "phpmyadmin_url": "https://company-blog.ddev.site:8037"},
+    {"name": "booking-api", "type": "codeigniter", "status": "stopped", "status_desc": "stopped",
+     "approot": "/mnt/d/Projects/booking-api", "primary_url": "https://booking-api.ddev.site",
+     "httpsurl": "https://booking-api.ddev.site", "mailpit_https_url": "https://booking-api.ddev.site:8026",
+     "phpmyadmin_url": "https://booking-api.ddev.site:8037"},
+    {"name": "old-portal", "type": "php", "status": "stopped", "status_desc": "stopped",
+     "approot": "/mnt/d/Projects/old-portal", "primary_url": "https://old-portal.ddev.site",
+     "httpsurl": "https://old-portal.ddev.site", "mailpit_https_url": "https://old-portal.ddev.site:8026",
+     "phpmyadmin_url": null}
+  ],
+  "details": {
+    "acme-shop": {
+      "name": "acme-shop", "approot": "/mnt/d/Projects/acme-shop", "status": "running", "type": "laravel",
+      "docroot": "public", "php_version": "8.3", "webserver_type": "nginx-fpm", "database": "mariadb:11.8",
+      "additional_hostnames": ["admin", "api"], "additional_fqdns": ["acme.test"], "phpmyadmin": true,
+      "snapshots": [
+        {"name": "before-upgrade", "size": 4718592, "time": 1794480000},
+        {"name": "acme-shop_20261110094512", "size": 4456448, "time": 1794303912}
+      ],
+      "addons": [
+        {"name": "phpmyadmin", "repo": "ddev/ddev-phpmyadmin", "version": "v1.0.3"},
+        {"name": "redis", "repo": "ddev/ddev-redis", "version": "v2.1.0"}
+      ],
+      "commands": [
+        {"id": "composer-install", "cmd": "ddev composer install"},
+        {"id": "composer-update", "cmd": "ddev composer update"},
+        {"id": "npm-install", "cmd": "ddev npm install"},
+        {"id": "npm-build", "cmd": "ddev npm run build"},
+        {"id": "artisan-migrate", "cmd": "ddev artisan migrate --force"},
+        {"id": "artisan-optimize-clear", "cmd": "ddev artisan optimize:clear"}
+      ],
+      "xdebug": false
+    },
+    "company-blog": {
+      "name": "company-blog", "approot": "/mnt/d/Projects/company-blog", "status": "running", "type": "wordpress",
+      "docroot": "", "php_version": "8.2", "webserver_type": "apache-fpm", "database": "mysql:8.0",
+      "additional_hostnames": [], "additional_fqdns": [], "phpmyadmin": true, "snapshots": [],
+      "addons": [{"name": "phpmyadmin", "repo": "ddev/ddev-phpmyadmin", "version": "v1.0.3"}],
+      "commands": [
+        {"id": "wp-cache-flush", "cmd": "ddev wp cache flush"},
+        {"id": "wp-plugin-update", "cmd": "ddev wp plugin update --all"},
+        {"id": "wp-core-update", "cmd": "ddev wp core update"}
+      ],
+      "xdebug": true
+    },
+    "booking-api": {
+      "name": "booking-api", "approot": "/mnt/d/Projects/booking-api", "status": "stopped", "type": "codeigniter",
+      "docroot": "public", "php_version": "8.3", "webserver_type": "nginx-fpm", "database": "mysql:8.4",
+      "additional_hostnames": [], "additional_fqdns": [], "phpmyadmin": true, "snapshots": [],
+      "addons": [{"name": "phpmyadmin", "repo": "ddev/ddev-phpmyadmin", "version": "v1.0.3"}],
+      "commands": [
+        {"id": "composer-install", "cmd": "ddev composer install"},
+        {"id": "spark-migrate", "cmd": "ddev exec php spark migrate"},
+        {"id": "spark-cache-clear", "cmd": "ddev exec php spark cache:clear"}
+      ],
+      "xdebug": null
+    },
+    "old-portal": {
+      "name": "old-portal", "approot": "/mnt/d/Projects/old-portal", "status": "stopped", "type": "php",
+      "docroot": "", "php_version": "7.4", "webserver_type": "apache-fpm", "database": "mariadb:10.6",
+      "additional_hostnames": [], "additional_fqdns": [], "phpmyadmin": false, "snapshots": [],
+      "addons": [], "commands": [], "xdebug": null
+    }
+  },
+  "system": {
+    "ddev": "v1.25.5", "docker": "29.9.3", "docker_platform": "wsl2-docker-ce", "docker_ok": true,
+    "latest": {"version": "v1.25.6", "url": "https://github.com/ddev/ddev/releases"},
+    "disk": [
+      {"type": "Images", "size": "5.8GB", "reclaimable": "1.9GB (33%)"},
+      {"type": "Containers", "size": "120MB", "reclaimable": "0B (0%)"},
+      {"type": "Local Volumes", "size": "1.6GB", "reclaimable": "210MB (13%)"},
+      {"type": "Build Cache", "size": "4.5GB", "reclaimable": "130MB"}
+    ],
+    "stats": {
+      "acme-shop": {"cpu": 2.4, "mem": 412000000},
+      "company-blog": {"cpu": 0.8, "mem": 286000000}
+    }
+  },
+  "logs": {
+    "web": "+ /start.sh\nStarting php-fpm8.3\n[12-Nov-2026 18:40:02] NOTICE: fpm is running, pid 21\n[12-Nov-2026 18:40:02] NOTICE: ready to handle connections\n172.18.0.4 - - [12/Nov/2026:18:41:10 +0000] \"GET / HTTP/1.1\" 200 5123\n172.18.0.4 - - [12/Nov/2026:18:41:11 +0000] \"GET /build/app.css HTTP/1.1\" 200 18342\n",
+    "db": "2026-11-12 18:40:01 0 [Note] Server socket created on IP: '0.0.0.0'.\n2026-11-12 18:40:01 0 [Note] mariadbd: ready for connections.\n"
+  }
+}
