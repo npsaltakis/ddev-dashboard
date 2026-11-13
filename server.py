@@ -23,7 +23,7 @@ try:
 except ImportError:
     yaml = None
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("DDEV_DASHBOARD_PORT", "8099"))
@@ -784,6 +784,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._file("index.html", "text/html; charset=utf-8")
             if re.fullmatch(r"/assets/[a-z0-9-]+\.svg", u.path):
                 return self._file(u.path.lstrip("/"), "image/svg+xml")
+            if re.fullmatch(r"/assets/icon-\d+\.png", u.path):
+                return self._file(u.path.lstrip("/"), "image/png")
+            if u.path == "/manifest.webmanifest":
+                return self._file("manifest.webmanifest", "application/manifest+json")
             if u.path == "/api/projects":
                 projects = list_projects()
                 with lock:

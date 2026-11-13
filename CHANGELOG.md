@@ -2,6 +2,18 @@
 
 All notable changes to DDEV Dashboard. The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-13
+
+### Added
+
+- Desktop notifications when a task finishes (start, stop, import, command…), while the dashboard isn't in front of you. Clicking one opens that project. Turn them on in ⚙ Settings, which also has a test button.
+- Install as an app (PWA): own window, icon on the taskbar and in Start, and an "Install" button in ⚙ Settings.
+- The taskbar icon and the page title show how many projects are running.
+
+### Changed
+
+- Task output no longer shows ddev's colour codes.
+
 ## [1.0.0] - 2026-11-12
 
 First release.
@@ -27,4 +39,5 @@ First release.
 - Demo mode (`DDEV_DASHBOARD_DEMO=1`) with sample data, used for screenshots and tests.
 - Security: localhost only, Host header check, custom header for actions, validated input, no shell.
 
+[1.1.0]: https://github.com/npsaltakis/ddev-dashboard/releases/tag/v1.1.0
 [1.0.0]: https://github.com/npsaltakis/ddev-dashboard/releases/tag/v1.0.0

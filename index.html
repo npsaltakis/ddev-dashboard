@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DDEV Dashboard</title>
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
+<meta name="theme-color" content="#0ea5e9">
 <style>
 :root{--bg:#f4f5f7;--card:#fff;--fg:#1c1f24;--muted:#6b7280;--line:#e3e5e9;--ok:#16a34a;--off:#9ca3af;--busy:#d97706;--err:#dc2626;--acc:#02a8e2;--acc2:#0284c7;--shade:rgba(15,18,24,.45)}
 @media (prefers-color-scheme:dark){:root{--bg:#111318;--card:#1a1d24;--fg:#e8eaee;--muted:#9097a3;--line:#2a2e37;--acc2:#38bdf8;--shade:rgba(0,0,0,.6)}}
@@ -173,6 +176,13 @@ footer a{color:var(--muted)}
   <label data-i18n="projectsDir"></label>
   <input id="sDir">
   <p class="hint" data-i18n="projectsDirHint"></p>
+  <h3 data-i18n="notifTitle"></h3>
+  <div class="check"><input type="checkbox" id="sNotif"><span data-i18n="notifLabel"></span></div>
+  <p class="hint" id="sNotifState"></p>
+  <button id="sNotifTest" data-i18n="notifTest"></button>
+  <h3 data-i18n="installTitle"></h3>
+  <p class="hint" id="sInstallHint"></p>
+  <button id="sInstall" class="primary" data-i18n="installBtn" hidden></button>
   <h3 data-i18n="autostart"></h3>
   <p class="hint" id="sAutoHint"></p>
   <div class="copy"><pre id="sAuto"></pre><button id="sCopy" data-i18n="copy"></button></div>
@@ -242,6 +252,14 @@ el: {
     "ddev/ddev-selenium-standalone-chrome":"Chrome για αυτόματα tests"},
   nGit:"Clone από git (προαιρετικό)", nGitHint:"Αν βάλεις URL, το repo γίνεται clone στον φάκελο. Αν έχει ήδη .ddev, χρησιμοποιείται όπως είναι.",
   demoBanner:"Demo: δείχνει δοκιμαστικά δεδομένα και οι ενέργειες είναι απενεργοποιημένες.",
+  notifTitle:"Ειδοποιήσεις", notifLabel:"Ειδοποίηση όταν τελειώνει μια εργασία (start, stop, εισαγωγή βάσης, εντολή κ.λπ.)",
+  notifOn:"Ενεργές. Εμφανίζονται όταν το dashboard δεν είναι μπροστά σου.", notifOff:"Ανενεργές.",
+  notifDenied:"Ο browser τις έχει μπλοκάρει. Επίτρεψέ τες από το εικονίδιο 🔒 δίπλα στη διεύθυνση και δοκίμασε ξανά.",
+  notifUnsupported:"Ο browser δεν υποστηρίζει ειδοποιήσεις.", notifTest:"Δοκιμαστική ειδοποίηση",
+  notifTestTitle:"DDEV Dashboard", notifTestBody:"Οι ειδοποιήσεις δουλεύουν ✓", notifDone:"{n}: {a} ✓", notifFail:"{n}: {a} απέτυχε ✗",
+  installTitle:"Εγκατάσταση ως εφαρμογή", installBtn:"Εγκατάσταση",
+  installHint:"Ανοίγει σε δικό του παράθυρο, με εικονίδιο στο taskbar και στο Start. Στον Edge ή στο Chrome: μενού ⋯ → Εφαρμογές → Εγκατάσταση αυτής της τοποθεσίας ως εφαρμογής.",
+  installed:"Τρέχει ήδη ως εφαρμογή ✓ Το εικονίδιο στο taskbar δείχνει πόσα projects τρέχουν.",
   locale:"el-GR"
 },
 en: {
@@ -304,6 +322,14 @@ en: {
     "ddev/ddev-selenium-standalone-chrome":"Chrome for automated tests"},
   nGit:"Clone from git (optional)", nGitHint:"With a URL, the repo is cloned into the folder. If it already has .ddev, that config is used as is.",
   demoBanner:"Demo: showing sample data, actions are disabled.",
+  notifTitle:"Notifications", notifLabel:"Notify me when a task finishes (start, stop, database import, command, etc.)",
+  notifOn:"On. Shown when the dashboard isn't in front of you.", notifOff:"Off.",
+  notifDenied:"The browser blocks them. Allow them from the 🔒 icon next to the address, then try again.",
+  notifUnsupported:"This browser doesn't support notifications.", notifTest:"Test notification",
+  notifTestTitle:"DDEV Dashboard", notifTestBody:"Notifications work ✓", notifDone:"{n}: {a} ✓", notifFail:"{n}: {a} failed ✗",
+  installTitle:"Install as an app", installBtn:"Install",
+  installHint:"Opens in its own window, with an icon on the taskbar and in Start. In Edge or Chrome: menu ⋯ → Apps → Install this site as an app.",
+  installed:"Already running as an app ✓ The taskbar icon shows how many projects are running.",
   locale:"en-GB"
 }};
 
@@ -320,6 +346,7 @@ const sep = () => isWin() ? "\\" : "/";
 const hostsFile = () => isWin() ? "C:\\Windows\\System32\\drivers\\etc\\hosts" : "/etc/hosts";
 
 let state = {projects:[], busy:{}, logs:{}}, opts = null, loading = false;
+let seenLogs = null;  // task results already seen, so only new ones trigger a notification
 let cur = null, curTab = "settings", detail = null, wasBusy = false, shownLog = undefined;
 
 function applyStatic() {
@@ -344,18 +371,21 @@ async function act(name, action, params = {}) {
 
 async function load() {
   if (loading) return; loading = true;
-  try { state = await api("/api/projects"); render(); }
+  try { state = await api("/api/projects"); render(); notifyFinished(seenLogs, state.logs); seenLogs = state.logs; }
   catch (e) { $("#list").innerHTML = `<div class="card error">${t("error")}: ${esc(e.message)}</div>`; $("#sum").textContent = ""; }
   finally { loading = false; }
 }
 
 const fmtTime = s => new Date(s * 1000).toLocaleTimeString(L().locale);
-const logHtml = (log, open) => log ? `<details class="${log.ok ? "" : "fail"}" ${open ? "open" : ""}><summary>${t("last")}: ${esc(L().act[log.action] || log.action)} ${log.ok ? "✓" : t("failed")} · ${fmtTime(log.time)}</summary><pre>${esc(log.output)}</pre></details>` : "";
-const busyHtml = (b, open) => b ? `<details ${open ? "open" : ""}><summary>${esc(L().busy[b.action] || b.action)}</summary><pre>${esc(b.output || "…")}</pre></details>` : "";
+const noAnsi = s => String(s ?? "").replace(/\x1b\[[0-9;]*[A-Za-z]/g, "");  // ddev colours its output
+const logHtml = (log, open) => log ? `<details class="${log.ok ? "" : "fail"}" ${open ? "open" : ""}><summary>${t("last")}: ${esc(L().act[log.action] || log.action)} ${log.ok ? "✓" : t("failed")} · ${fmtTime(log.time)}</summary><pre>${esc(noAnsi(log.output))}</pre></details>` : "";
+const busyHtml = (b, open) => b ? `<details ${open ? "open" : ""}><summary>${esc(L().busy[b.action] || b.action)}</summary><pre>${esc(noAnsi(b.output) || "…")}</pre></details>` : "";
 
 function render() {
   const ps = state.projects, all = state.busy["*"], names = new Set(ps.map(p => p.name));
-  $("#sum").textContent = t("running", {a: ps.filter(p => p.status === "running").length, b: ps.length});
+  const nRunning = ps.filter(p => p.status === "running").length;
+  $("#sum").textContent = t("running", {a: nRunning, b: ps.length});
+  setBadge(nRunning);
   $("#poweroff").disabled = !!all;
   $("#poweroff").textContent = all ? L().busy.poweroff : t("stopAll");
 
@@ -485,7 +515,7 @@ function renderDrawerJob() {
   if (b) {
     shownLog = undefined;
     const pre = $("#dJob pre");
-    if (pre) { const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 10; pre.textContent = b.output || "…"; if (atEnd) pre.scrollTop = pre.scrollHeight; }
+    if (pre) { const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 10; pre.textContent = noAnsi(b.output) || "…"; if (atEnd) pre.scrollTop = pre.scrollHeight; }
     else $("#dJob").innerHTML = `<b>${esc(L().busy[b.action] || b.action)}</b><pre>${esc(b.output || "…")}</pre>`;
   } else {
     const log = state.logs[cur];  // command output is what you came for: show it open
@@ -743,7 +773,7 @@ function openSettings() {
   savedLang = cfg.lang;
   $("#sLang").value = cfg.lang; $("#sEnv").innerHTML = `<option value="${cfg.env}"></option>`; $("#sEnv").value = cfg.env;
   $("#sDir").value = cfg.projects_dir || "";
-  drawSettings();
+  drawSettings(); drawNotif(); drawInstall();
   $("#setModal").classList.add("open"); $("#shade").classList.add("open");
   history.replaceState(null, "", "#settings");
 }
@@ -757,6 +787,55 @@ $("#sSaveSet").onclick = async () => {
     savedLang = null; closeAll(); render();
   } catch (e) { alert(t("error") + ": " + e.message); }
 };
+
+/* ---------- notifications, taskbar badge, install ---------- */
+const canNotify = "Notification" in window;
+const notifyOn = () => canNotify && Notification.permission === "granted" && store.get("ddd.notify", "1") === "1";
+
+function notifyFinished(prev, logs) {
+  if (!prev || !notifyOn()) return;            // first load: nothing has "just" finished
+  if (document.visibilityState === "visible" && document.hasFocus()) return;  // you're looking at it already
+  for (const [key, log] of Object.entries(logs)) {
+    if (prev[key] && prev[key].time === log.time) continue;
+    const a = L().act[log.action] || log.action, n = key === "*" ? t("allProjects") : key;
+    const lines = noAnsi(log.output).split("\n").map(s => s.trim()).filter(s => s && !s.startsWith("$"));
+    const note = new Notification(t(log.ok ? "notifDone" : "notifFail", {n, a}),
+      {body: lines.slice(-2).join("\n").slice(0, 180), icon: "/assets/icon-192.png", tag: "ddd-" + key});
+    note.onclick = () => { window.focus(); if (state.projects.some(p => p.name === key)) openDrawer(key); note.close(); };
+  }
+}
+
+let lastBadge = -1;
+function setBadge(n) {
+  document.title = n ? `(${n}) DDEV Dashboard` : "DDEV Dashboard";
+  if (n === lastBadge || !("setAppBadge" in navigator)) return;
+  lastBadge = n;
+  (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
+}
+
+function drawNotif() {
+  const st = $("#sNotifState"), box = $("#sNotif");
+  if (!canNotify) { box.checked = false; box.disabled = true; $("#sNotifTest").hidden = true; st.textContent = t("notifUnsupported"); return; }
+  box.checked = notifyOn();
+  $("#sNotifTest").disabled = !notifyOn();
+  st.textContent = Notification.permission === "denied" ? t("notifDenied") : t(notifyOn() ? "notifOn" : "notifOff");
+}
+$("#sNotif").onchange = async () => {
+  if ($("#sNotif").checked && Notification.permission !== "granted") await Notification.requestPermission();
+  store.set("ddd.notify", $("#sNotif").checked && Notification.permission === "granted" ? "1" : "0");
+  drawNotif();
+};
+$("#sNotifTest").onclick = () => new Notification(t("notifTestTitle"), {body: t("notifTestBody"), icon: "/assets/icon-192.png"});
+
+let installPrompt = null;
+const isInstalled = () => matchMedia("(display-mode: standalone)").matches;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; drawInstall(); });
+window.addEventListener("appinstalled", () => { installPrompt = null; drawInstall(); });
+function drawInstall() {
+  $("#sInstallHint").textContent = t(isInstalled() ? "installed" : "installHint");
+  $("#sInstall").hidden = !installPrompt || isInstalled();
+}
+$("#sInstall").onclick = async () => { if (installPrompt) { await installPrompt.prompt(); installPrompt = null; drawInstall(); } };
 
 /* ---------- deep links: #new, #settings, #project=<name>&tab=<tab> ---------- */
 function applyHash() {

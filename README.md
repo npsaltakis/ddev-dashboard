@@ -39,6 +39,8 @@
 - **Add-ons**: install Redis, Adminer, Solr, Elasticsearch and more with one click, or any `owner/repo`. Remove them just as easily.
 - **System status**: DDEV version (and whether a newer one is out), Docker status and Docker disk usage.
 - **Open the project folder** in Explorer/Finder, or **open it in VS Code**.
+- **Notifications** when a task finishes, while you're in another window. Clicking one opens the project.
+- **Install it as an app**: own window, taskbar icon with the number of running projects (see below).
 - **Logs** for the web and db containers.
 - **Delete** a project (files stay, optional safety snapshot).
 - **Greek and English** interface, light and dark theme.
@@ -75,6 +77,12 @@ python C:\ddev-dashboard\server.py
 Then open **http://localhost:8099**. Set `DDEV_DASHBOARD_PORT` to use another port.
 
 To update: `git pull` in that folder, then restart the dashboard.
+
+### Use it as an app
+
+In Edge or Chrome open the dashboard, then **⚙ Settings → Install** (or browser menu **⋯ → Apps → Install this site as an app**). It gets its own window and an icon on the taskbar and in Start, and the icon shows how many projects are running.
+
+To get **notifications** when a task finishes, tick **⚙ Settings → Notifications** and allow them when the browser asks.
 
 ### Try it without DDEV
 

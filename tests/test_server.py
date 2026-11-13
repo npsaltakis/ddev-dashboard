@@ -191,6 +191,14 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(self.req("/assets/../server.py")[0], 404)
         self.assertEqual(self.req("/assets/missing.svg")[0], 404)
 
+    def test_installable_app(self):
+        code, body = self.req("/manifest.webmanifest")
+        self.assertEqual(code, 200)
+        manifest = json.loads(body)
+        self.assertEqual(manifest["display"], "standalone")
+        for icon in manifest["icons"]:
+            self.assertEqual(self.req(icon["src"])[0], 200, icon["src"])
+
     def test_projects(self):
         code, body = self.req("/api/projects")
         self.assertEqual(code, 200)
