@@ -32,6 +32,7 @@
 - **Projects at a glance**: status, CPU and RAM of every project, search and filter, live output while commands run.
 - **Start / Stop / Restart** per project, and **Stop all** (`ddev poweroff`).
 - **New project**: from an empty folder or **cloned from git**. Choose type, PHP, web server, database, extra domains and optionally phpMyAdmin.
+- **CMS installer**: **WordPress, Joomla, Drupal** ready with an admin user, or **Laravel / CodeIgniter 4** with the database set up, in one click (see below).
 - **Domains**: add or remove `*.ddev.site` hostnames and your own domains (e.g. `mysite.test`), with the hosts-file line ready to copy.
 - **Project settings**: type, PHP version, web server, docroot, Xdebug on/off.
 - **Database**: open phpMyAdmin, download a `.sql.gz` backup, import a dump, create, restore and delete snapshots.
@@ -78,6 +79,20 @@ Then open **http://localhost:8099**. Set `DDEV_DASHBOARD_PORT` to use another po
 
 To update: `git pull` in that folder, then restart the dashboard.
 
+### New site with WordPress, Joomla and more
+
+**+ New project** → under "What to set up" pick a CMS, enter the folder (e.g. `D:\Projects\mysite`), PHP, database and admin details, and click **Create**. The dashboard does every step by itself, with a live log:
+
+| | Steps |
+|---|---|
+| WordPress | `ddev config --project-type=wordpress`, `ddev start`, `ddev wp core download`, `ddev wp core install` |
+| Joomla | `ddev config --project-type=joomla`, `ddev start`, downloads the latest release from downloads.joomla.org, `ddev php installation/joomla.php install` (database `db`, user/password `db`/`db`) |
+| Drupal | `ddev config --project-type=drupal11 --docroot=web`, `ddev composer create-project drupal/recommended-project`, `drush site:install` |
+| Laravel | `ddev composer create-project laravel/laravel`, `ddev artisan migrate` |
+| CodeIgniter 4 | `ddev composer create-project codeigniter4/appstarter`, a `.env` with DDEV's database |
+
+At the end (if ticked) it adds phpMyAdmin (`ddev add-on get ddev/ddev-phpmyadmin` and `ddev restart`). The site opens at `https://<name>.ddev.site`. The folder must not exist or must be empty. The admin password is hidden (`***`) in the log and isn't stored anywhere.
+
 ### Use it as an app
 
 In Edge or Chrome open the dashboard, then **⚙ Settings → Install** (or browser menu **⋯ → Apps → Install this site as an app**). It gets its own window and an icon on the taskbar and in Start, and the icon shows how many projects are running.
@@ -101,6 +116,14 @@ Open **⚙ Settings → Start the dashboard automatically**. You'll find ready-m
 | WSL / Linux | systemd user service `ddev-dashboard` + `loginctl enable-linger`. On WSL, systemd must be enabled (`[boot] systemd=true` in `/etc/wsl.conf`). |
 | macOS | LaunchAgent `com.ddev.dashboard` |
 | Windows | Scheduled Task "DDEV Dashboard" at sign-in (runs with `pythonw`, no window) |
+
+On WSL, if mkcert lives on Windows (`CAROOT` in a Windows folder), give the service `CAROOT` too, or projects started from the dashboard get `http://` instead of `https://`:
+
+```bash
+mkdir -p ~/.config/systemd/user/ddev-dashboard.service.d
+printf '[Service]\nEnvironment=CAROOT=%s\n' "$(mkcert -CAROOT)" > ~/.config/systemd/user/ddev-dashboard.service.d/caroot.conf
+systemctl --user daemon-reload && systemctl --user restart ddev-dashboard
+```
 
 On WSL / Linux:
 

@@ -146,6 +146,113 @@ class CommandTests(unittest.TestCase):
             self.assertNotIn("artisan-migrate", ids)
 
 
+class InstallerTests(unittest.TestCase):
+    """The CMS installer: input checks and the ddev steps it plans (nothing is run)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.env = WithEnv("windows" if os.name == "nt" else "linux")
+        self.env.__enter__()
+
+    def tearDown(self):
+        self.env.__exit__()
+        self.tmp.cleanup()
+
+    def prm(self, **kw):
+        p = {"cms": "wordpress", "name": "newsite", "path": os.path.join(self.tmp.name, "newsite"),
+             "php_version": "8.3", "database": "mariadb:11.8", "webserver_type": "nginx-fpm",
+             "site_title": "My site", "admin_user": "admin", "admin_email": "admin@example.com",
+             "admin_password": "s3cret-Pass-123", "phpmyadmin": True}
+        p.update(kw)
+        return p
+
+    @staticmethod
+    def commands(steps):
+        return [" ".join(s[0]) for s in steps if isinstance(s, tuple)]
+
+    def test_wordpress_steps(self):
+        name, steps, secrets = server.install_steps(self.prm())
+        self.assertEqual(name, "newsite")
+        self.assertEqual(secrets, ["s3cret-Pass-123"])
+        cmds = self.commands(steps)
+        self.assertIn("--project-type=wordpress", cmds[0])
+        self.assertEqual(cmds[1], "ddev start")
+        self.assertEqual(cmds[2], "ddev wp core download")
+        self.assertIn("--url=https://newsite.ddev.site", cmds[3])
+        self.assertIn("--admin_user=admin", cmds[3])
+        self.assertEqual(cmds[-2:], ["ddev add-on get ddev/ddev-phpmyadmin", "ddev restart"])
+
+    def test_joomla_steps(self):
+        name, steps, secrets = server.install_steps(self.prm(cms="joomla"))
+        cmds = self.commands(steps)
+        self.assertIn("--project-type=joomla", cmds[0])
+        install = next(c for c in cmds if "installation/joomla.php install" in c)
+        for part in ("--db-host=db", "--db-user=db", "--db-pass=db", "--db-type=mysqli", "--admin-username=admin"):
+            self.assertIn(part, install)
+        self.assertTrue(any(callable(s) for s in steps[3:5]), "downloads Joomla before installing")
+        _, steps, _ = server.install_steps(self.prm(cms="joomla", database="postgres:17"))
+        cmds = self.commands(steps)
+        self.assertTrue(any("--db-type=pgsql" in c for c in cmds))
+        self.assertFalse(any("phpmyadmin" in c for c in cmds), "no phpMyAdmin with PostgreSQL")
+
+    def test_framework_steps(self):
+        for cms, pkg in [("laravel", "laravel/laravel"), ("codeigniter", "codeigniter4/appstarter")]:
+            # no admin account: empty admin fields are fine
+            _, steps, secrets = server.install_steps(self.prm(cms=cms, admin_user="", admin_password=""))
+            cmds = self.commands(steps)
+            self.assertIn("--docroot=public", cmds[0], cms)
+            self.assertIn(f"ddev composer create-project {pkg}", cmds, cms)
+            self.assertEqual(secrets, [], cms)
+        _, steps, secrets = server.install_steps(self.prm(cms="drupal"))
+        cmds = self.commands(steps)
+        self.assertIn("--project-type=drupal11", cmds[0])
+        self.assertIn("--docroot=web", cmds[0])
+        self.assertTrue(any(c.startswith("ddev drush site:install") for c in cmds))
+        with self.assertRaises(server.BadRequest):
+            server.install_steps(self.prm(cms="drupal", admin_user=""))
+
+    def test_rejects_bad_input(self):
+        bad = [{"cms": "typo3"}, {"name": "bad name"}, {"name": "acme-shop"},  # demo project exists
+               {"php_version": "7.4", "cms": "joomla"}, {"database": "postgres:17"},  # WordPress has no PostgreSQL
+               {"admin_user": "a b"}, {"admin_email": "nope"}, {"admin_password": "short"},
+               {"cms": "joomla", "admin_password": "elevenchars"}, {"site_title": "x\ny"},
+               {"php_version": "9.9"}, {"path": "relative/dir"}]
+        for b in bad:
+            with self.assertRaises(server.BadRequest, msg=b):
+                server.install_steps(self.prm(**b))
+        full = os.path.join(self.tmp.name, "full")
+        os.makedirs(full)
+        open(os.path.join(full, "index.php"), "w").close()
+        with self.assertRaises(server.BadRequest):
+            server.install_steps(self.prm(path=full))
+
+    def test_php_versions(self):
+        self.assertTrue(server.php_at_least("8.3", "8.3"))
+        self.assertTrue(server.php_at_least("8.10", "8.3"))
+        self.assertFalse(server.php_at_least("8.2", "8.3"))
+
+    def test_ci4_env(self):
+        server.write_ci4_env(self.tmp.name, "ci", "mariadb")
+        with open(os.path.join(self.tmp.name, ".env"), encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn("app.baseURL = 'https://ci.ddev.site/'", text)
+        self.assertIn("database.default.hostname = db", text)
+        self.assertIn("DBDriver = MySQLi", text)
+
+    def test_password_hidden_in_log(self):
+        key = "secret-test"
+        with server.lock:
+            server.busy[key] = {"action": "install", "output": "", "started": 0}
+            server._secrets[key] = ["s3cret-Pass-123"]
+        try:
+            server._append(key, "$ ddev wp core install --admin_password=s3cret-Pass-123\n")
+            self.assertNotIn("s3cret", server.busy[key]["output"])
+            self.assertIn("--admin_password=***", server.busy[key]["output"])
+        finally:
+            server.busy.pop(key, None)
+            server._secrets.pop(key, None)
+
+
 class MessageTests(unittest.TestCase):
     def test_both_languages(self):
         for key, (el, en) in server.MESSAGES.items():
@@ -221,7 +328,10 @@ class HttpTests(unittest.TestCase):
         self.assertTrue(s["demo"])
         self.assertEqual(s["version"], server.__version__)
         code, body = self.req("/api/options")
-        self.assertIn("ddev/ddev-redis", json.loads(body)["addons"])
+        o = json.loads(body)
+        self.assertIn("ddev/ddev-redis", o["addons"])
+        self.assertEqual(set(o["installers"]), {"wordpress", "joomla", "drupal", "laravel", "codeigniter"})
+        self.assertEqual(o["installers"]["joomla"]["min_php"], "8.3")
 
     def test_rejects_foreign_host(self):
         self.assertEqual(self.req("/api/projects", host="evil.example:80")[0], 403)

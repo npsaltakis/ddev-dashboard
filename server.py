@@ -23,7 +23,7 @@ try:
 except ImportError:
     yaml = None
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("DDEV_DASHBOARD_PORT", "8099"))
@@ -472,19 +472,26 @@ def system_info():
 
 # ---------- jobs ----------
 
-def start_job(key, action, steps, cleanup=None):
+def start_job(key, action, steps, cleanup=None, secrets=()):
     """steps: (argv, cwd) tuples or callables, run in order; stops at first failure.
     A callable may return a list of further steps, which run right after it.
-    cleanup: optional callable that always runs at the end."""
+    cleanup: optional callable that always runs at the end.
+    secrets: strings (e.g. passwords in argv) shown as *** in the log."""
     with lock:
         if key in busy or "*" in busy:
             raise BadRequest(msg("busy"))
         busy[key] = {"action": action, "output": "", "started": time.time()}
+        _secrets[key] = [s for s in secrets if s]
     threading.Thread(target=_run_job, args=(key, action, list(steps), cleanup), daemon=True).start()
+
+
+_secrets = {}  # key -> strings to hide in that job's log (kept out of `busy`, which is sent to the UI)
 
 
 def _append(key, text):
     with lock:
+        for s in _secrets.get(key, ()):
+            text = text.replace(s, "***")
         job = busy.get(key)
         if job is not None:
             job["output"] = (job["output"] + text)[-20000:]
@@ -520,6 +527,7 @@ def _run_job(key, action, steps, cleanup=None):
             pass
     _cache.pop("system", None)
     with lock:
+        _secrets.pop(key, None)
         job = busy.pop(key, {"output": ""})
         last_log[key] = {"action": action, "ok": ok, "output": job["output"][-8000:],
                          "time": time.time()}
@@ -587,6 +595,173 @@ def create_steps(prm):
     return name, [lambda: os.makedirs(path, exist_ok=True), (config[0], path)] + tail
 
 
+# ---------- CMS installer ----------
+
+# type/docroot for ddev config; min_php: oldest PHP the current release runs on;
+# admin: whether it creates an admin account; dbs: database engines it supports.
+INSTALLERS = {
+    "wordpress": {"label": "WordPress", "type": "wordpress", "docroot": "", "min_php": "7.4",
+                  "admin": True, "dbs": ("mariadb", "mysql"), "admin_path": "/wp-admin/"},
+    "joomla": {"label": "Joomla", "type": "joomla", "docroot": "", "min_php": "8.3",
+               "admin": True, "dbs": ("mariadb", "mysql", "postgres"), "admin_path": "/administrator/"},
+    "drupal": {"label": "Drupal", "type": "drupal11", "docroot": "web", "min_php": "8.3",
+               "admin": True, "dbs": ("mariadb", "mysql", "postgres"), "admin_path": "/user/login"},
+    "laravel": {"label": "Laravel", "type": "laravel", "docroot": "public", "min_php": "8.2",
+                "admin": False, "dbs": ("mariadb", "mysql", "postgres"), "admin_path": ""},
+    "codeigniter": {"label": "CodeIgniter 4", "type": "codeigniter", "docroot": "public", "min_php": "8.1",
+                    "admin": False, "dbs": ("mariadb", "mysql", "postgres"), "admin_path": ""},
+}
+JOOMLA_LATEST_API = "https://downloads.joomla.org/api/v1/latest/cms"
+JOOMLA_ZIP = "https://downloads.joomla.org/cms/joomla{major}/{dashed}/Joomla_{dashed}-Stable-Full_Package.zip?format=zip"
+ADMIN_USER_RE = re.compile(r"^[A-Za-z0-9_.@-]{2,60}$")
+EMAIL_RE = re.compile(r"^[^@\s'\"]+@[^@\s'\"]+\.[^@\s'\"]+$")
+
+MESSAGES.update({
+    "unknown_cms": ("Άγνωστο CMS", "Unknown CMS"),
+    "php_too_old": ("Το {c} θέλει PHP {v} ή νεότερη", "{c} needs PHP {v} or newer"),
+    "db_unsupported": ("Το {c} δεν υποστηρίζει {v}", "{c} doesn't support {v}"),
+    "bad_admin_user": ("Μη έγκυρο όνομα χρήστη admin (2-60 χαρακτήρες: γράμματα, αριθμοί, . _ - @)",
+                       "Invalid admin username (2-60 characters: letters, numbers, . _ - @)"),
+    "bad_email": ("Μη έγκυρο email", "Invalid email"),
+    "short_password": ("Ο κωδικός πρέπει να έχει τουλάχιστον {n} χαρακτήρες",
+                       "The password must have at least {n} characters"),
+    "bad_title": ("Μη έγκυρος τίτλος site", "Invalid site title"),
+    "folder_not_empty": ("Ο φάκελος πρέπει να μην υπάρχει ή να είναι άδειος",
+                         "The folder must not exist or must be empty"),
+    "downloading": ("Λήψη {v}…", "Downloading {v}…"),
+    "extracting": ("Αποσυμπίεση… {n} αρχεία", "Extracting… {n} files"),
+    "install_done": ("✓ Έτοιμο: {u}", "✓ Ready: {u}"),
+    "install_admin": ("  Διαχείριση: {u} (χρήστης {n})", "  Admin: {u} (user {n})"),
+})
+
+
+def php_at_least(v, minimum):
+    return tuple(int(x) for x in v.split(".")) >= tuple(int(x) for x in minimum.split("."))
+
+
+def joomla_latest():
+    """(version, zip URL) of the newest Joomla release, from downloads.joomla.org."""
+    req = urllib.request.Request(JOOMLA_LATEST_API, headers={"User-Agent": "ddev-dashboard"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        branches = json.load(r)["branches"]
+    version = max((b["version"] for b in branches), key=lambda v: tuple(int(x) for x in v.split(".")))
+    dashed = version.replace(".", "-")
+    return version, JOOMLA_ZIP.format(major=version.split(".")[0], dashed=dashed)
+
+
+def download_extract(key, url, label, dest):
+    """Download a zip to dest and unpack it there, logging progress."""
+    import zipfile
+    _append(key, msg("downloading", v=label) + "\n")
+    tmp = os.path.join(dest, ".dashboard-download.zip")
+    req = urllib.request.Request(url, headers={"User-Agent": "ddev-dashboard"})
+    with urllib.request.urlopen(req, timeout=60) as r, open(tmp, "wb") as f:
+        shutil.copyfileobj(r, f, 1 << 20)
+    try:
+        with zipfile.ZipFile(tmp) as z:
+            names = z.namelist()
+            for i, n in enumerate(names, 1):
+                z.extract(n, dest)  # zipfile drops ".." and absolute parts
+                if i % 2000 == 0 or i == len(names):
+                    _append(key, msg("extracting", n=i) + "\n")
+    finally:
+        os.remove(tmp)
+
+
+def write_ci4_env(path, name, db_type):
+    """CodeIgniter 4: .env with development mode, the site URL and ddev's database."""
+    driver = "Postgre" if db_type == "postgres" else "MySQLi"
+    port = 5432 if db_type == "postgres" else 3306
+    with open(os.path.join(path, ".env"), "w", encoding="utf-8") as f:
+        f.write(f"CI_ENVIRONMENT = development\napp.baseURL = 'https://{name}.ddev.site/'\n"
+                f"database.default.hostname = db\ndatabase.default.database = db\n"
+                f"database.default.username = db\ndatabase.default.password = db\n"
+                f"database.default.DBDriver = {driver}\ndatabase.default.port = {port}\n")
+
+
+def install_steps(prm):
+    """Steps that create a new ddev project with a CMS or framework installed and ready."""
+    cms_id = str(prm.get("cms", ""))
+    cms = INSTALLERS.get(cms_id)
+    if not cms:
+        raise BadRequest(msg("unknown_cms"))
+    name = str(prm.get("name", "")).strip().lower()
+    if not NAME_RE.match(name):
+        raise BadRequest(msg("bad_name"))
+    php = pick(prm.get("php_version"), PHP_VERSIONS)
+    if not php_at_least(php, cms["min_php"]):
+        raise BadRequest(msg("php_too_old", c=cms["label"], v=cms["min_php"]))
+    database = pick(prm.get("database"), DATABASES)
+    db_type = database.split(":")[0]
+    if db_type not in cms["dbs"]:
+        raise BadRequest(msg("db_unsupported", c=cms["label"], v=database))
+    webserver = pick(prm.get("webserver_type") or "nginx-fpm", WEBSERVERS)
+    title = str(prm.get("site_title") or name).strip()
+    user = str(prm.get("admin_user", "")).strip()
+    email = str(prm.get("admin_email", "")).strip()
+    password = str(prm.get("admin_password", ""))
+    if cms["admin"]:
+        if not title or len(title) > 100 or any(c in title for c in "\0\r\n"):
+            raise BadRequest(msg("bad_title"))
+        if not ADMIN_USER_RE.match(user):
+            raise BadRequest(msg("bad_admin_user"))
+        if not EMAIL_RE.match(email) or len(email) > 100:
+            raise BadRequest(msg("bad_email"))
+        min_len = 12 if cms_id == "joomla" else 8  # Joomla refuses shorter admin passwords
+        if len(password) < min_len or len(password) > 100 or "\0" in password:
+            raise BadRequest(msg("short_password", n=min_len))
+    if any(p["name"] == name for p in list_projects()):
+        raise BadRequest(msg("exists"))
+    path = to_host_path(str(prm.get("path", "")))
+    if os.path.exists(path) and (not os.path.isdir(path) or os.listdir(path)):
+        raise BadRequest(msg("folder_not_empty"))
+
+    url = f"https://{name}.ddev.site"
+    config = ddev("config", f"--project-name={name}", f"--project-type={cms['type']}",
+                  f"--docroot={cms['docroot']}", f"--php-version={php}",
+                  f"--webserver-type={webserver}", f"--database={database}")
+    steps = [lambda: os.makedirs(path, exist_ok=True), (config, path), (ddev("start"), path)]
+
+    if cms_id == "wordpress":
+        steps += [(ddev("wp", "core", "download"), path),
+                  (ddev("wp", "core", "install", f"--url={url}", f"--title={title}",
+                        f"--admin_user={user}", f"--admin_password={password}",
+                        f"--admin_email={email}", "--skip-email"), path)]
+    elif cms_id == "joomla":
+        def fetch_joomla():
+            version, zip_url = joomla_latest()
+            download_extract(name, zip_url, f"Joomla {version}", path)
+        steps += [fetch_joomla,
+                  (ddev("php", "installation/joomla.php", "install", f"--site-name={title}",
+                        f"--admin-user={user}", f"--admin-username={user}",
+                        f"--admin-password={password}", f"--admin-email={email}",
+                        f"--db-type={'pgsql' if db_type == 'postgres' else 'mysqli'}",
+                        "--db-host=db", "--db-user=db", "--db-pass=db", "--db-name=db",
+                        "--db-prefix=jos_", "--db-encryption=0", "--public-folder="), path)]
+    elif cms_id == "drupal":
+        steps += [(ddev("composer", "create-project", "drupal/recommended-project"), path),
+                  (ddev("composer", "require", "drush/drush"), path),
+                  (ddev("drush", "site:install", "standard", "-y", f"--site-name={title}",
+                        f"--account-name={user}", f"--account-pass={password}",
+                        f"--account-mail={email}", f"--site-mail={email}"), path)]
+    elif cms_id == "laravel":
+        steps += [(ddev("composer", "create-project", "laravel/laravel"), path),
+                  (ddev("artisan", "migrate", "--force"), path)]
+    elif cms_id == "codeigniter":
+        steps += [(ddev("composer", "create-project", "codeigniter4/appstarter"), path),
+                  lambda: write_ci4_env(path, name, db_type)]
+
+    if prm.get("phpmyadmin", True) and db_type != "postgres":
+        steps += [(ddev("add-on", "get", "ddev/ddev-phpmyadmin"), path), (ddev("restart"), path)]
+
+    def done():
+        _append(name, "\n" + msg("install_done", u=url) + "\n")
+        if cms["admin_path"]:
+            _append(name, msg("install_admin", u=url + cms["admin_path"], n=user) + "\n")
+    steps.append(done)
+    return name, steps, [password] if cms["admin"] else []
+
+
 def handle_action(body):
     if DEMO:
         raise BadRequest(msg("demo"))
@@ -600,6 +775,10 @@ def handle_action(body):
     if action == "create":
         key, steps = create_steps(prm)
         return start_job(key, "create", steps)
+
+    if action == "install":
+        key, steps, secrets = install_steps(prm)
+        return start_job(key, "install", steps, secrets=secrets)
 
     p = get_project(name)
     root = p["approot"]
@@ -795,7 +974,11 @@ class Handler(BaseHTTPRequestHandler):
                                             "logs": dict(last_log)})
             if u.path == "/api/options":
                 return self._send(200, {"php": PHP_VERSIONS, "webservers": WEBSERVERS,
-                                        "databases": DATABASES, "types": PROJECT_TYPES, "addons": ADDONS})
+                                        "databases": DATABASES, "types": PROJECT_TYPES, "addons": ADDONS,
+                                        "installers": {k: {"label": v["label"], "min_php": v["min_php"],
+                                                           "admin": v["admin"], "dbs": list(v["dbs"]),
+                                                           "docroot": v["docroot"]}
+                                                       for k, v in INSTALLERS.items()}})
             if u.path == "/api/settings":
                 return self._send(200, settings_payload())
             if u.path == "/api/system":

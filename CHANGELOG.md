@@ -2,6 +2,14 @@
 
 All notable changes to DDEV Dashboard. The format follows [Keep a Changelog](https://keepachangelog.com/) and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-11-14
+
+### Added
+
+- CMS installer in **+ New project**: WordPress, Joomla (latest release from downloads.joomla.org) and Drupal with an admin user, Laravel and CodeIgniter 4 with the database set up. It runs `ddev config`, `ddev start`, the download and the install, then optionally phpMyAdmin and a restart, with a live log.
+- Passwords given to a task are shown as `***` in its log.
+- README: how to pass `CAROOT` to the systemd service on WSL, so new projects get `https://`.
+
 ## [1.1.0] - 2026-11-13
 
 ### Added
@@ -39,5 +47,6 @@ First release.
 - Demo mode (`DDEV_DASHBOARD_DEMO=1`) with sample data, used for screenshots and tests.
 - Security: localhost only, Host header check, custom header for actions, validated input, no shell.
 
+[1.2.0]: https://github.com/npsaltakis/ddev-dashboard/releases/tag/v1.2.0
 [1.1.0]: https://github.com/npsaltakis/ddev-dashboard/releases/tag/v1.1.0
 [1.0.0]: https://github.com/npsaltakis/ddev-dashboard/releases/tag/v1.0.0

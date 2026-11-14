@@ -32,6 +32,7 @@
 - **Όλα τα projects με μια ματιά**: κατάσταση, CPU και RAM ανά project, αναζήτηση και φίλτρο, ζωντανή έξοδος όσο τρέχουν οι εντολές.
 - **Start / Stop / Restart** ανά project και **Stop όλα** (`ddev poweroff`).
 - **Νέο project**: σε άδειο φάκελο ή με **clone από git**. Διαλέγεις τύπο, PHP, web server, βάση, επιπλέον domains και προαιρετικά phpMyAdmin.
+- **Installer CMS**: **WordPress, Joomla, Drupal** έτοιμα με χρήστη admin, ή **Laravel / CodeIgniter 4** με ρυθμισμένη βάση, με ένα κλικ (δες παρακάτω).
 - **Domains**: προσθήκη και αφαίρεση `*.ddev.site` και δικών σου domains (π.χ. `mysite.test`), με έτοιμη τη γραμμή για το αρχείο hosts.
 - **Ρυθμίσεις project**: τύπος, έκδοση PHP, web server, docroot, Xdebug on/off.
 - **Βάση**: phpMyAdmin, λήψη backup `.sql.gz`, εισαγωγή dump, snapshots (δημιουργία, επαναφορά, διαγραφή).
@@ -78,6 +79,20 @@ python C:\ddev-dashboard\server.py
 
 Για ενημέρωση: `git pull` στον φάκελο και επανεκκίνηση του dashboard.
 
+### Νέο site με WordPress, Joomla κ.ά.
+
+**+ Νέο project** → στο «Τι θα στηθεί» διάλεξε CMS, γράψε φάκελο (π.χ. `D:\Projects\mysite`), PHP, βάση και στοιχεία admin, και πάτα **Δημιουργία**. Το dashboard κάνει μόνο του όλα τα βήματα, με ζωντανό log:
+
+| | Βήματα |
+|---|---|
+| WordPress | `ddev config --project-type=wordpress`, `ddev start`, `ddev wp core download`, `ddev wp core install` |
+| Joomla | `ddev config --project-type=joomla`, `ddev start`, λήψη της τελευταίας έκδοσης από το downloads.joomla.org, `ddev php installation/joomla.php install` (βάση `db`, χρήστης/κωδικός `db`/`db`) |
+| Drupal | `ddev config --project-type=drupal11 --docroot=web`, `ddev composer create-project drupal/recommended-project`, `drush site:install` |
+| Laravel | `ddev composer create-project laravel/laravel`, `ddev artisan migrate` |
+| CodeIgniter 4 | `ddev composer create-project codeigniter4/appstarter`, `.env` με τη βάση του DDEV |
+
+Στο τέλος (αν είναι τσεκαρισμένο) μπαίνει phpMyAdmin (`ddev add-on get ddev/ddev-phpmyadmin` και `ddev restart`). Το site ανοίγει στο `https://<όνομα>.ddev.site`. Ο φάκελος πρέπει να μην υπάρχει ή να είναι άδειος. Ο κωδικός admin κρύβεται (`***`) στο log και δεν αποθηκεύεται πουθενά.
+
 ### Χρήση ως εφαρμογή
 
 Άνοιξε το dashboard στον Edge ή στο Chrome και πάτα **⚙ Ρυθμίσεις → Εγκατάσταση** (ή από το μενού του browser **⋯ → Εφαρμογές → Εγκατάσταση αυτής της τοποθεσίας ως εφαρμογής**). Ανοίγει σε δικό του παράθυρο, με εικονίδιο στο taskbar και στο Start, και το εικονίδιο δείχνει πόσα projects τρέχουν.
@@ -101,6 +116,14 @@ DDEV_DASHBOARD_DEMO=1 python3 server.py
 | WSL / Linux | systemd user service `ddev-dashboard` + `loginctl enable-linger`. Στο WSL πρέπει να είναι ενεργό το systemd (`[boot] systemd=true` στο `/etc/wsl.conf`). |
 | macOS | LaunchAgent `com.ddev.dashboard` |
 | Windows | Scheduled Task «DDEV Dashboard» στη σύνδεση (με `pythonw`, χωρίς παράθυρο) |
+
+Στο WSL, αν το mkcert είναι στα Windows (`CAROOT` στον φάκελο των Windows), δώσε το `CAROOT` και στο service, αλλιώς τα projects που ξεκινούν από το dashboard παίρνουν `http://` αντί για `https://`:
+
+```bash
+mkdir -p ~/.config/systemd/user/ddev-dashboard.service.d
+printf '[Service]\nEnvironment=CAROOT=%s\n' "$(mkcert -CAROOT)" > ~/.config/systemd/user/ddev-dashboard.service.d/caroot.conf
+systemctl --user daemon-reload && systemctl --user restart ddev-dashboard
+```
 
 Σε WSL / Linux:
 

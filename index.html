@@ -95,6 +95,8 @@ code{font-size:12px;background:var(--bg);border:1px solid var(--line);border-rad
 .links button.link:hover{text-decoration:underline}
 .cmds .li code{font-size:12px}
 .banner{background:color-mix(in srgb,var(--busy) 15%,var(--card));border:1px solid var(--busy);border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+.chips.cms{flex-wrap:wrap}
+#newModal.cms .blank-only,#newModal:not(.admin) .admin-only{display:none}
 footer{margin-top:28px;text-align:center;font-size:12px;color:var(--muted)}
 footer a{color:var(--muted)}
 </style>
@@ -145,23 +147,41 @@ footer a{color:var(--muted)}
 
 <div class="modal" id="newModal">
   <h2 data-i18n="newProjectTitle"></h2>
-  <label data-i18n="nGit"></label>
-  <input id="nGit" placeholder="https://github.com/user/repo.git">
-  <p class="hint" data-i18n="nGitHint"></p>
+  <label data-i18n="nCms"></label>
+  <div class="chips cms" id="nCms"></div>
+  <p class="hint" id="nCmsHint"></p>
+  <div class="blank-only">
+    <label data-i18n="nGit"></label>
+    <input id="nGit" placeholder="https://github.com/user/repo.git">
+    <p class="hint" data-i18n="nGitHint"></p>
+  </div>
   <label data-i18n="nPath"></label>
   <input id="nPath">
   <div class="grid2">
     <div><label data-i18n="nName"></label><input id="nName" placeholder="mysite"></div>
-    <div><label data-i18n="type"></label><select id="nType"></select></div>
-    <div><label data-i18n="nDocroot"></label><input id="nDocroot" data-i18n-ph="docrootPh"></div>
+    <div class="blank-only"><label data-i18n="type"></label><select id="nType"></select></div>
+    <div class="blank-only"><label data-i18n="nDocroot"></label><input id="nDocroot" data-i18n-ph="docrootPh"></div>
     <div><label>PHP</label><select id="nPhp"></select></div>
     <div><label>Web server</label><select id="nWeb"></select></div>
     <div><label data-i18n="database"></label><select id="nDb"></select></div>
   </div>
-  <label data-i18n="nHosts"></label>
-  <input id="nHosts" data-i18n-ph="nHostsPh">
+  <div class="admin-only">
+    <h3 data-i18n="nAdmin"></h3>
+    <label data-i18n="nTitle"></label><input id="nTitle" data-i18n-ph="nTitlePh">
+    <div class="grid2">
+      <div><label data-i18n="nUser"></label><input id="nUser" value="admin" autocomplete="off"></div>
+      <div><label>Email</label><input id="nEmail" type="email" value="admin@example.com" autocomplete="off"></div>
+    </div>
+    <label data-i18n="nPass"></label>
+    <div class="addrow"><input id="nPass" type="text" autocomplete="new-password" spellcheck="false"><button id="nGen" type="button" data-i18n="nGen"></button></div>
+    <p class="hint" id="nPassHint"></p>
+  </div>
+  <div class="blank-only">
+    <label data-i18n="nHosts"></label>
+    <input id="nHosts" data-i18n-ph="nHostsPh">
+  </div>
   <div class="check"><input type="checkbox" id="nPma" checked><span data-i18n="nPma"></span></div>
-  <div class="check"><input type="checkbox" id="nStart" checked><span data-i18n="nStart"></span></div>
+  <div class="check blank-only"><input type="checkbox" id="nStart" checked><span data-i18n="nStart"></span></div>
   <p class="hint" id="nUrl"></p>
   <div class="foot"><button class="cancel" data-i18n="cancel"></button><button class="primary" id="nCreate" data-i18n="create"></button></div>
 </div>
@@ -229,11 +249,11 @@ el: {
   envNames:{wsl:"WSL (Ubuntu)", linux:"Linux", macos:"macOS", windows:"Windows"},
   act:{start:"Start", stop:"Stop", restart:"Restart", poweroff:"Stop όλα", create:"Δημιουργία", settings:"Ρυθμίσεις", domains:"Domains", xdebug:"Xdebug",
     phpmyadmin:"phpMyAdmin", snapshot:"Snapshot", "snapshot-restore":"Επαναφορά snapshot", "snapshot-delete":"Διαγραφή snapshot", "import-db":"Εισαγωγή βάσης", delete:"Διαγραφή",
-    exec:"Εντολή", "addon-get":"Εγκατάσταση add-on", "addon-remove":"Αφαίρεση add-on"},
+    exec:"Εντολή", "addon-get":"Εγκατάσταση add-on", "addon-remove":"Αφαίρεση add-on", install:"Εγκατάσταση CMS"},
   busy:{start:"Εκκίνηση…", stop:"Σταμάτημα…", restart:"Επανεκκίνηση…", poweroff:"Σταματούν όλα…", create:"Δημιουργία…", settings:"Αλλαγή ρυθμίσεων…",
     domains:"Αλλαγή domains…", xdebug:"Xdebug…", phpmyadmin:"Εγκατάσταση phpMyAdmin…", snapshot:"Snapshot…", "snapshot-restore":"Επαναφορά snapshot…",
     "snapshot-delete":"Διαγραφή snapshot…", "import-db":"Εισαγωγή βάσης…", delete:"Διαγραφή…",
-    exec:"Εκτέλεση εντολής…", "addon-get":"Εγκατάσταση add-on…", "addon-remove":"Αφαίρεση add-on…"},
+    exec:"Εκτέλεση εντολής…", "addon-get":"Εγκατάσταση add-on…", "addon-remove":"Αφαίρεση add-on…", install:"Εγκατάσταση CMS…"},
   searchPh:"Αναζήτηση project…", fAll:"Όλα", fRunning:"Τρέχουν", fStopped:"Σταματημένα", noMatch:"Κανένα project δεν ταιριάζει.",
   openFolder:"📁 Φάκελος", vscode:"VS Code",
   sysDocker:"Docker", sysDockerDown:"Το Docker δεν απαντά", sysNewer:"νεότερη: {v}", sysUpToDate:"ενημερωμένο", sysDisk:"Χώρος Docker",
@@ -260,6 +280,11 @@ el: {
   installTitle:"Εγκατάσταση ως εφαρμογή", installBtn:"Εγκατάσταση",
   installHint:"Ανοίγει σε δικό του παράθυρο, με εικονίδιο στο taskbar και στο Start. Στον Edge ή στο Chrome: μενού ⋯ → Εφαρμογές → Εγκατάσταση αυτής της τοποθεσίας ως εφαρμογής.",
   installed:"Τρέχει ήδη ως εφαρμογή ✓ Το εικονίδιο στο taskbar δείχνει πόσα projects τρέχουν.",
+  nCms:"Τι θα στηθεί", cmsBlank:"Κενό project", nAdmin:"Διαχειριστής", nTitle:"Τίτλος site", nTitlePh:"π.χ. Το site μου", nUser:"Όνομα χρήστη",
+  nPass:"Κωδικός", nGen:"Τυχαίος", nPassHint:"Τουλάχιστον {n} χαρακτήρες. Σημείωσέ τον, δεν αποθηκεύεται πουθενά στο dashboard.",
+  cmsHint:"Κάνει μόνο του όλα τα βήματα (ddev config, start, κατέβασμα, εγκατάσταση{p}). Θέλει μερικά λεπτά.", cmsHintPma:", phpMyAdmin",
+  cmsHint_laravel:" Η βάση ρυθμίζεται αυτόματα, δεν φτιάχνεται χρήστης admin.", cmsHint_codeigniter:" Γράφεται .env με τη βάση του DDEV, δεν φτιάχνεται χρήστης admin.",
+  badPass:"Ο κωδικός πρέπει να έχει τουλάχιστον {n} χαρακτήρες.", fillAdmin:"Συμπλήρωσε χρήστη, email και κωδικό admin.",
   locale:"el-GR"
 },
 en: {
@@ -299,11 +324,11 @@ en: {
   envNames:{wsl:"WSL (Ubuntu)", linux:"Linux", macos:"macOS", windows:"Windows"},
   act:{start:"Start", stop:"Stop", restart:"Restart", poweroff:"Stop all", create:"Create", settings:"Settings", domains:"Domains", xdebug:"Xdebug",
     phpmyadmin:"phpMyAdmin", snapshot:"Snapshot", "snapshot-restore":"Restore snapshot", "snapshot-delete":"Delete snapshot", "import-db":"Import database", delete:"Delete",
-    exec:"Command", "addon-get":"Install add-on", "addon-remove":"Remove add-on"},
+    exec:"Command", "addon-get":"Install add-on", "addon-remove":"Remove add-on", install:"CMS install"},
   busy:{start:"Starting…", stop:"Stopping…", restart:"Restarting…", poweroff:"Stopping all…", create:"Creating…", settings:"Applying settings…",
     domains:"Updating domains…", xdebug:"Xdebug…", phpmyadmin:"Installing phpMyAdmin…", snapshot:"Snapshot…", "snapshot-restore":"Restoring snapshot…",
     "snapshot-delete":"Deleting snapshot…", "import-db":"Importing database…", delete:"Deleting…",
-    exec:"Running command…", "addon-get":"Installing add-on…", "addon-remove":"Removing add-on…"},
+    exec:"Running command…", "addon-get":"Installing add-on…", "addon-remove":"Removing add-on…", install:"Installing CMS…"},
   searchPh:"Search projects…", fAll:"All", fRunning:"Running", fStopped:"Stopped", noMatch:"No project matches.",
   openFolder:"📁 Folder", vscode:"VS Code",
   sysDocker:"Docker", sysDockerDown:"Docker isn't responding", sysNewer:"newer: {v}", sysUpToDate:"up to date", sysDisk:"Docker disk usage",
@@ -330,6 +355,11 @@ en: {
   installTitle:"Install as an app", installBtn:"Install",
   installHint:"Opens in its own window, with an icon on the taskbar and in Start. In Edge or Chrome: menu ⋯ → Apps → Install this site as an app.",
   installed:"Already running as an app ✓ The taskbar icon shows how many projects are running.",
+  nCms:"What to set up", cmsBlank:"Empty project", nAdmin:"Administrator", nTitle:"Site title", nTitlePh:"e.g. My site", nUser:"Username",
+  nPass:"Password", nGen:"Random", nPassHint:"At least {n} characters. Note it down, the dashboard doesn't store it anywhere.",
+  cmsHint:"Does every step by itself (ddev config, start, download, install{p}). Takes a few minutes.", cmsHintPma:", phpMyAdmin",
+  cmsHint_laravel:" The database is set up automatically, no admin user is created.", cmsHint_codeigniter:" Writes a .env with DDEV's database, no admin user is created.",
+  badPass:"The password must have at least {n} characters.", fillAdmin:"Fill in the admin username, email and password.",
   locale:"en-GB"
 }};
 
@@ -677,17 +707,34 @@ function tabDelete(el, d) {
 }
 
 /* ---------- new project ---------- */
+let cms = "";  // "" = empty project, else a key of opts.installers
+const phpNum = v => v.split(".").map(Number).reduce((a, b) => a * 100 + b, 0);
+const passMin = () => cms === "joomla" ? 12 : 8;
 function fillNew() {
+  const inst = opts.installers || {}, ins = inst[cms];
+  $("#nCms").innerHTML = [["", t("cmsBlank")], ...Object.entries(inst).map(([k, v]) => [k, v.label])]
+    .map(([k, l]) => `<button type="button" data-cms="${esc(k)}" class="${k === cms ? "on" : ""}">${esc(l)}</button>`).join("");
+  const keepPhp = $("#nPhp").value || "8.3", keepDb = $("#nDb").value || "mariadb:11.8";
+  const php = ins ? opts.php.filter(v => phpNum(v) >= phpNum(ins.min_php)) : opts.php;
+  const dbs = ins ? opts.databases.filter(d => ins.dbs.includes(d.split(":")[0])) : opts.databases;
   $("#nType").innerHTML = options(opts.types, "php");
-  $("#nPhp").innerHTML = options(opts.php, "8.3");
-  $("#nWeb").innerHTML = options(opts.webservers, "apache-fpm");
-  $("#nDb").innerHTML = options(opts.databases, "mariadb:11.8");
+  $("#nPhp").innerHTML = options(php, php.includes(keepPhp) ? keepPhp : php.includes("8.3") ? "8.3" : php[0]);
+  if (!$("#nWeb").value) $("#nWeb").innerHTML = options(opts.webservers, "apache-fpm");
+  $("#nDb").innerHTML = options(dbs, dbs.includes(keepDb) ? keepDb : dbs[0]);
+  $("#newModal").classList.toggle("cms", !!ins);
+  $("#newModal").classList.toggle("admin", !!(ins && ins.admin));
+  $("#nCmsHint").textContent = ins ? t("cmsHint", {p: t("cmsHintPma")}) + (L()["cmsHint_" + cms] || "") : "";
+  $("#nPassHint").textContent = t("nPassHint", {n: passMin()});
 }
+$("#nCms").onclick = e => { const b = e.target.closest("button[data-cms]"); if (b) { cms = b.dataset.cms; fillNew(); } };
+const randomPass = () => { const a = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789", r = crypto.getRandomValues(new Uint32Array(16)); return [...r].map(x => a[x % a.length]).join(""); };
+$("#nGen").onclick = () => { $("#nPass").value = randomPass(); };
 let nameTouched = false, pathTouched = false;
 const baseDir = () => { const dir = showPath(cfg.default_projects_dir || ""); return dir ? dir.replace(/[\\/]+$/, "") + sep() : ""; };
 function openNew() {
   $("#nPath").value = baseDir(); $("#nGit").value = "";
   $("#nName").value = ""; nameTouched = false; pathTouched = false;
+  $("#nTitle").value = ""; $("#nPass").value = randomPass(); fillNew();
   $("#newModal").classList.add("open"); $("#shade").classList.add("open"); $("#nGit").focus(); updUrl();
   history.replaceState(null, "", "#new");
 }
@@ -708,6 +755,14 @@ function updUrl() { const n = $("#nName").value.trim(); $("#nUrl").innerHTML = n
 $("#nCreate").onclick = () => {
   const name = $("#nName").value.trim(), path = $("#nPath").value.trim();
   if (!name || !path || /[\\/]$/.test(path)) return alert(t("fillIn"));
+  if (cms) {
+    const ins = opts.installers[cms], user = $("#nUser").value.trim(), email = $("#nEmail").value.trim(), pass = $("#nPass").value;
+    if (ins.admin && (!user || !email || !pass)) return alert(t("fillAdmin"));
+    if (ins.admin && pass.length < passMin()) return alert(t("badPass", {n: passMin()}));
+    act("", "install", {cms, name, path, php_version:$("#nPhp").value, webserver_type:$("#nWeb").value, database:$("#nDb").value,
+      phpmyadmin:$("#nPma").checked, site_title:$("#nTitle").value.trim() || name, admin_user:user, admin_email:email, admin_password:pass});
+    return closeAll();
+  }
   act("", "create", {name, path, git_url:$("#nGit").value.trim(), type:$("#nType").value, docroot:$("#nDocroot").value.trim(), php_version:$("#nPhp").value,
     webserver_type:$("#nWeb").value, database:$("#nDb").value, phpmyadmin:$("#nPma").checked, start:$("#nStart").checked,
     additional_hostnames:$("#nHosts").value.split(",").map(s => s.trim()).filter(Boolean)});
